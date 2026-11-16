@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
-const BACKEND = process.env.BACKEND_API_URL || 'https://api.shopam.net';
+const BACKEND = process.env.BACKEND_API_URL || 'https://stag-api.shopsafeng.com';
 
 const DROP_REQUEST_HEADERS = new Set([
   'host',
