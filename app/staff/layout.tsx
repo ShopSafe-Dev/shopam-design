@@ -11,13 +11,13 @@ import ShopSafeLogo from '@/app/components/ui/ShopSafeLogo';
 import { httpStatus } from './ui';
 
 const NAV: { href: string; label: string; icon: LucideIcon }[] = [
-  { href: '/admin', label: 'Overview', icon: Home },
-  { href: '/admin/verifications', label: 'Verifications', icon: ShieldCheck },
-  { href: '/admin/tickets', label: 'Tickets', icon: MessageCircle },
-  { href: '/admin/payouts', label: 'Payouts', icon: Wallet },
-  { href: '/admin/reviews', label: 'Reviews', icon: FileText },
-  { href: '/admin/mailer', label: 'Mailer', icon: Bell },
-  { href: '/admin/staff', label: 'Staff', icon: User },
+  { href: '/staff', label: 'Overview', icon: Home },
+  { href: '/staff/verifications', label: 'Verifications', icon: ShieldCheck },
+  { href: '/staff/tickets', label: 'Tickets', icon: MessageCircle },
+  { href: '/staff/payouts', label: 'Payouts', icon: Wallet },
+  { href: '/staff/reviews', label: 'Reviews', icon: FileText },
+  { href: '/staff/mailer', label: 'Mailer', icon: Bell },
+  { href: '/staff/staff', label: 'Staff', icon: User },
 ];
 
 type Gate = 'checking' | 'ok' | 'denied' | 'error';
@@ -78,17 +78,17 @@ useEffect(() => {
     );
   }
 
-  const isActive = (href: string) => (href === '/admin' ? pathname === href : pathname.startsWith(href));
+  const isActive = (href: string) => (href === '/staff' ? pathname === href : pathname.startsWith(href));
 
   return (
     <div className="min-h-screen bg-canvas font-sans text-ink antialiased">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-slate-200/70 bg-white md:flex">
         <div className="px-5 pb-2 pt-6">
-          <Link href="/admin" aria-label="Admin home">
+          <Link href="/staff" aria-label="Staff home">
             <ShopSafeLogo height={28} />
           </Link>
         </div>
-        <p className="px-5 pb-3 pt-2 text-[11px] font-bold uppercase tracking-widest text-slate-500">Admin</p>
+        <p className="px-5 pb-3 pt-2 text-[11px] font-bold uppercase tracking-widest text-slate-500">Staff</p>
         <nav className="flex-1 space-y-1 px-3">
           {NAV.map(({ href, label, icon: Icon }) => (
             <Link

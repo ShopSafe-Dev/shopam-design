@@ -100,7 +100,7 @@ export const API_ENDPOINTS = {
     PAYMENT_DECISION: (id: string) => `/api/commerce/orders/${id}/payment-decision`,
     START_DELIVERY: (id: string) => `/api/commerce/orders/${id}/start-delivery`,
     CONFIRM_HANDOVER: (id: string) => `/api/commerce/orders/${id}/confirm-handover`,
-    RAISE_DISPUTE: (id: string) => `/admins/dispute/create/${id}`,
+    RAISE_DISPUTE: (id: string) => `/staff/dispute/create/${id}`,
     DISPUTES: '/api/commerce/disputes/',
   },
 

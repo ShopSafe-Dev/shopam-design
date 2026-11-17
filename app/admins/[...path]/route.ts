@@ -27,7 +27,7 @@ const DROP_RESPONSE_HEADERS = new Set([
 
 async function proxy(request: NextRequest, segments: string[]): Promise<NextResponse> {
   const rawPath = segments.join('/');
-  const path = '/admins/' + (rawPath.endsWith('/') ? rawPath : rawPath + '/');
+  const path = '/staff/' + (rawPath.endsWith('/') ? rawPath : rawPath + '/');
   const search = request.nextUrl.search;
   const target = `${BACKEND}${path}${search}`;
 
