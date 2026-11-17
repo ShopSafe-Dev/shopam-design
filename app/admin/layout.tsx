@@ -37,13 +37,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         return;
       }
       // The profile has no staff flag, so ask the backend: an admin-only call answers 403 for non-staff.
-      try {
-        await adminsApi.ticketsList();
-        setGate('ok');
-      } catch (err) {
-        const s = httpStatus(err);
-        if (s === 401) window.location.replace('/auth/signin?redirect=' + encodeURIComponent(pathname));
-        else setGate(s === 403 ? 'denied' : 'error');
+      if (user.is_admin === false){
+        window.location.replace("/dashboard")
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -68,6 +68,7 @@ export interface UserProfile {
   phone: string;
   is_customer?: boolean;
   is_vendor?: boolean;
+  is_admin?:boolean;
 }
 
 export interface VendorProfile {

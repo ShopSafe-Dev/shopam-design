@@ -32,6 +32,10 @@ export default function VendorDashboardLayout({ children }: { children: React.Re
         window.location.replace('/auth/signin?redirect=' + encodeURIComponent(pathname));
         return;
       }
+      if (u.is_admin === true) {
+        window.location.replace('/admin');
+        return;
+      }
       if (u.is_vendor === false && !DEV_AUTH_BYPASS) {
         window.location.replace('/explore');
         return;

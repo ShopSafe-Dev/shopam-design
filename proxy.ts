@@ -8,7 +8,7 @@ import { NextResponse } from 'next/server';
 // browser. Expired sessions (401 SESSION_INVALID) clear the cached user in the Axios
 // interceptor in lib/api/config.ts. Mixing cookie-based middleware guards with
 // client-side state caused redirect loops.
-export function middleware() {
+export function proxy() {
   return NextResponse.next();
 }
 
