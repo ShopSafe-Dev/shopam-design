@@ -1,4 +1,5 @@
 import apiClient, { API_ENDPOINTS } from './config';
+import { getState } from '../auth/session';
 import {
   devMockEnabled,
   isDevOrderId,
@@ -521,14 +522,7 @@ export const messagesService = {
   /** Send a direct message */
   async sendMessage(data: SendMessageRequest): Promise<Message> {
     if (devMockEnabled()) {
-      let senderId = 'dev-customer';
-      try {
-        const raw = localStorage.getItem('user');
-        const parsed = raw ? JSON.parse(raw) : null;
-        if (parsed?.id) senderId = parsed.id;
-      } catch {
-        /* keep the default */
-      }
+      const senderId = getState().user?.id ?? 'dev-customer';
       return addDevMessage(data.recipient, senderId, data.content) as unknown as Message;
     }
     const response = await apiClient.post<Message>(API_ENDPOINTS.MESSAGES.LIST, data);

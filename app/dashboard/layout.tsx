@@ -26,20 +26,18 @@ export default function VendorDashboardLayout({ children }: { children: React.Re
     if (authCheckRan.current) return;
     authCheckRan.current = true;
 
-    if (!localStorage.getItem('user')) {
-      window.location.replace('/auth/signin?redirect=' + encodeURIComponent(pathname));
-      return;
-    }
-    try {
-      const storedUser = JSON.parse(localStorage.getItem('user') ?? 'null');
-      if (storedUser && storedUser.is_vendor === false && !DEV_AUTH_BYPASS) {
+    // Session is the HttpOnly cookie; ask the server who we are.
+    authService.ensureUser().then((u) => {
+      if (!u) {
+        window.location.replace('/auth/signin?redirect=' + encodeURIComponent(pathname));
+        return;
+      }
+      if (u.is_vendor === false && !DEV_AUTH_BYPASS) {
         window.location.replace('/explore');
         return;
       }
-    } catch {
-      /* corrupt user blob — let API-level auth decide */
-    }
-    setAuthChecked(true);
+      setAuthChecked(true);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

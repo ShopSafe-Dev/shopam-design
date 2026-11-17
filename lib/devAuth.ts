@@ -20,11 +20,8 @@ export const DEV_USER: UserProfile = {
   is_customer: ROLE !== 'vendor',
 };
 
-/** Seed a mock session in localStorage so guards that read it directly pass. */
+/** Dev bypass: authService.* returns DEV_USER directly; only the role hint cookie is set. */
 export function ensureDevSession(): void {
   if (!DEV_AUTH_BYPASS || typeof window === 'undefined') return;
-  if (!localStorage.getItem('user')) {
-    localStorage.setItem('user', JSON.stringify(DEV_USER));
-  }
   document.cookie = `shopam_role=${ROLE}; Path=/; Max-Age=2592000; SameSite=Lax`;
 }

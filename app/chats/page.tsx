@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Loader2, ShoppingBag } from 'lucide-react';
-import { ordersService } from '@/lib/api';
+import { ordersService, authService } from '@/lib/api';
 import type { Order } from '@/lib/api';
 import AppBar from '@/app/components/ui/AppBar';
 import BottomNav from '@/app/components/BottomNav';
@@ -38,18 +38,19 @@ export default function ChatsListPage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
-    const user = localStorage.getItem('user');
-    if (!user) {
-      setIsAuthenticated(false);
-      setIsLoading(false);
-      return;
-    }
-    setIsAuthenticated(true);
-    ordersService
-      .getOrderHistory()
-      .then((data) => setOrders(data.results ?? []))
-      .catch(() => setError('Failed to load orders. Please try again.'))
-      .finally(() => setIsLoading(false));
+    authService.ensureUser().then((user) => {
+      if (!user) {
+        setIsAuthenticated(false);
+        setIsLoading(false);
+        return;
+      }
+      setIsAuthenticated(true);
+      ordersService
+        .getOrderHistory()
+        .then((data) => setOrders(data.results ?? []))
+        .catch(() => setError('Failed to load orders. Please try again.'))
+        .finally(() => setIsLoading(false));
+    });
   }, []);
 
   const activeOrders = orders.filter((o) => o.status !== 'completed' && o.status !== 'cancelled');

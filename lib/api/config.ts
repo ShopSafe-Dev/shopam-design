@@ -1,5 +1,6 @@
-import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
+import axios, { AxiosError, AxiosInstance } from 'axios';
 import { ensureDevSession } from '../devAuth';
+import { clearUser } from '../auth/session';
 
 // Base URL for the API — empty string routes through Next.js rewrites (/api/* → https://api.shopam.net/api/*)
 export const API_BASE_URL = '';
@@ -10,134 +11,20 @@ const apiClient: AxiosInstance = axios.create({
   timeout: 30000, // 30 seconds
 });
 
-// Dev-only: seed the mock session before any page guard reads localStorage.
+// Dev-only: set the role hint cookie for the dev auth bypass.
 ensureDevSession();
 
-const PUBLIC_ENDPOINTS = [
-  '/api/accounts/register',
-  '/api/accounts/login',
-  '/api/accounts/token/refresh',
-  '/api/accounts/password/forgot',
-  '/api/accounts/password/reset',
-  '/api/accounts/verify-email',
-  '/api/accounts/user-verify',
-  '/api/commerce/categories',
-];
-
-const isPublicEndpoint = (url = '') => PUBLIC_ENDPOINTS.some((p) => url.startsWith(p));
-
-apiClient.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    // Auth is handled via the Bearer token attached below and the session
-    // cookie; no extra request headers are needed here.
-    return config;
-  },
-  (error: AxiosError) => {
-    return Promise.reject(error);
-  }
-);
-
-// Track whether a token refresh is already in flight to prevent concurrent
-// refresh attempts when multiple requests fail with 401 simultaneously.
-let _refreshPromise: Promise<string> | null = null;
-
-async function refreshAccessToken(): Promise<string> {
-  if (_refreshPromise) return _refreshPromise;
-
-  _refreshPromise = (async () => {
-    const refresh = localStorage.getItem('refresh_token');
-    if (!refresh) throw new Error('No refresh token');
-
-    const access = localStorage.getItem('access_token');
-    const response = await fetch('/api/accounts/token/refresh', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(access ? { Authorization: `Bearer ${access}` } : {}),
-      },
-      body: JSON.stringify({ refresh }),
-    });
-
-    if (!response.ok) throw new Error('Refresh failed');
-
-    const data = await response.json();
-    // Backend returns { access } or { tokens: { access } }
-    const newAccess: string = data.tokens?.access ?? data.access ?? '';
-    if (!newAccess) throw new Error('No access token in refresh response');
-
-    localStorage.setItem('access_token', newAccess);
-
-    const newRefresh: string = data.tokens?.refresh ?? data.refresh ?? '';
-    if (newRefresh) localStorage.setItem('refresh_token', newRefresh);
-
-    return newAccess;
-  })();
-
-  try {
-    return await _refreshPromise;
-  } finally {
-    _refreshPromise = null;
-  }
-}
-
-/** Drop all local session state (no navigation — callers decide what to show). */
-function clearSession() {
-  localStorage.removeItem('access_token');
-  localStorage.removeItem('refresh_token');
-  localStorage.removeItem('user');
-  // Expire the role-hint cookie set by authService.login.
-  document.cookie = 'shopam_role=; Path=/; Max-Age=0; SameSite=Lax';
-}
-
-type RetryableConfig = InternalAxiosRequestConfig & { _retry?: boolean };
-
+// Session = HttpOnly cookie set by the backend (auth_session). The browser sends it
+// automatically through the same-origin proxy; no token is read, stored or attached here.
+// The backend rotates tokens itself, so there is no client-side refresh flow.
 apiClient.interceptors.response.use(
   (response) => response,
-  async (error: AxiosError) => {
-    const config = error.config as RetryableConfig | undefined;
-    const status = error.response?.status;
-    const url = config?.url ?? '';
-    const isKeepalive = Boolean(
-      config?.headers && (config.headers as Record<string, unknown>)['X-Keepalive']
-    );
-
-    // Only 401s are auth problems. Never bounce the user on 400/403/404/5xx
-    // or network failures — public pages render their own empty/fallback state.
-    if (status !== 401 || !config || isPublicEndpoint(url) || isKeepalive) {
-      return Promise.reject(error);
+  (error: AxiosError<{ code?: string }>) => {
+    // Backend answers 401 {code: "SESSION_INVALID"} when the cookie session is missing/expired.
+    // Drop the cached user; callers/guards decide whether to prompt sign-in (no forced redirect).
+    if (error.response?.status === 401 && error.response.data?.code === 'SESSION_INVALID') {
+      clearUser();
     }
-
-    // A guest (never signed in) who hits an auth-required endpoint should NOT
-    // be redirected. The page/action decides whether to prompt for sign-in.
-    if (typeof window === 'undefined' || !localStorage.getItem('refresh_token')) {
-      return Promise.reject(error);
-    }
-
-    // Expired access token: try one silent refresh + replay before giving up.
-    if (!config._retry) {
-      config._retry = true;
-      try {
-        const access = await refreshAccessToken();
-        const headers = config.headers as unknown as { set?: (k: string, v: string) => void };
-        if (headers?.set) {
-          headers.set('Authorization', `Bearer ${access}`);
-        } else {
-          config.headers = {
-            ...(config.headers as Record<string, string>),
-            Authorization: `Bearer ${access}`,
-          } as InternalAxiosRequestConfig['headers'];
-        }
-        return apiClient(config);
-      } catch {
-        clearSession();
-        return Promise.reject(error);
-      }
-    }
-
-    // Refresh token is dead: clear the stale session but do NOT force a
-    // redirect. Protected areas guard themselves, so sign-in is only ever
-    // requested when the user takes an action that needs an account.
-    clearSession();
     return Promise.reject(error);
   }
 );

@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans, DM_Sans, Dancing_Script, Bricolage_Grotesque } from 
 import "./globals.css";
 import { ThemeProvider } from "./context/ThemeContext";
 import JsonLd from "@/components/JsonLd";
+import AuthBootstrap from "./components/AuthBootstrap";
 
 const jakartaSans = Plus_Jakarta_Sans({ 
   subsets: ["latin"],
@@ -126,6 +127,7 @@ export default function RootLayout({
       </head>
       <body className={jakartaSans.className}>
         <ThemeProvider>
+          <AuthBootstrap />
           {children}
         </ThemeProvider>
       </body>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { User } from 'lucide-react';
-import { authService } from '@/lib/api';
+import { useUser } from '@/lib/auth/useUser';
 import ProfileSidebar from './ProfileSidebar';
 
 export default function ProfileButton() {
@@ -10,8 +10,10 @@ export default function ProfileButton() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userInitial, setUserInitial] = useState('');
 
+  const { user: sessionUser } = useUser();
+
   useEffect(() => {
-    const user = authService.getCurrentUser();
+    const user = sessionUser;
     setIsAuthenticated(!!user);
     if (user) {
       const firstPart = (user.first_name || user.username || '');
@@ -27,7 +29,7 @@ export default function ProfileButton() {
 
       setUserInitial(`${firstInitial}${lastInitial}`.toUpperCase().trim());
     }
-  }, []);
+  }, [sessionUser]);
 
   return (
     <>

@@ -39,11 +39,13 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     if (!orderId) return;
-    if (!authService.getCurrentUser()) {
-      router.push(`/auth/signin?redirect=${encodeURIComponent(`/checkout/${orderId}`)}`);
-      return;
-    }
-    load();
+    authService.ensureUser().then((u) => {
+      if (!u) {
+        router.push(`/auth/signin?redirect=${encodeURIComponent(`/checkout/${orderId}`)}`);
+        return;
+      }
+      load();
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderId]);
 

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Trash2, Plus, Minus, MessageCircle, ShoppingBag, Loader2 } from 'lucide-react';
 import { cartService } from '@/lib/api/cart';
-import { ordersService } from '@/lib/api';
+import { ordersService, authService } from '@/lib/api';
 import { Cart, SubCart } from '@/lib/api/types';
 import { money } from '@/lib/order-steps';
 import AppBar from '@/app/components/ui/AppBar';
@@ -37,7 +37,7 @@ export default function CartPage() {
   useEffect(() => {
     // Guests can add to and view their cart locally. An account is only
     // required at checkout (the guest cart is merged after sign-in).
-    setIsGuest(!localStorage.getItem('user'));
+    authService.ensureUser().then((u) => setIsGuest(!u));
     fetchCart();
   }, []);
 
