@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Bell, FileText, Home, LogOut, MessageCircle, ShieldCheck, User, Wallet } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { authService } from '@/lib/api';
-import { adminsApi } from '@/lib/api/endpoints/admins';
+import { staffApi } from '@/lib/api/endpoints/staff';
 import ShopSafeLogo from '@/app/components/ui/ShopSafeLogo';
 import { httpStatus } from './ui';
 
@@ -46,7 +46,7 @@ useEffect(() => {
         return;
       }
       // is_admin missing from the profile: fall back to an admin-only call
-      await adminsApi.ticketsList();   // 403 for non-staff
+      await staffApi.ticketsList();   // 403 for non-staff
       setGate('ok');
     } catch (err) {
       setGate(httpStatus(err) === 403 ? 'denied' : 'error');

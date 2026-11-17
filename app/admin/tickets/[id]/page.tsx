@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Loader2 } from 'lucide-react';
-import { adminsApi } from '@/lib/api/endpoints/admins';
+import { staffApi } from '@/lib/api/endpoints/staff';
 import type * as S from '@/lib/api/openapi-types';
 import { Badge, Card, ErrorBox, PRIORITY_TONE, STATUS_TONE, Spinner, btn, errMsg, fmtDate, inputCls } from '../../ui';
 
@@ -34,7 +34,7 @@ export default function AdminTicketPage() {
     setError('');
     try {
       // There is no admin "get one ticket" endpoint: read the header from the list.
-      const [list, msgs] = await Promise.all([adminsApi.ticketsList(), adminsApi.ticketsMessagesList(id)]);
+      const [list, msgs] = await Promise.all([staffApi.ticketsList(), staffApi.ticketsMessagesList(id)]);
       const t = list.find((x) => x.id === id) ?? null;
       setTicket(t);
       if (t?.status) setStatus(t.status);
@@ -61,7 +61,7 @@ export default function AdminTicketPage() {
         setUpdateMsg('Nothing to change.');
         return;
       }
-      const updated = await adminsApi.ticketsUpdatePartialUpdate(id, patch);
+      const updated = await staffApi.ticketsUpdatePartialUpdate(id, patch);
       setTicket((t) => (t ? { ...t, status: updated.status ?? t.status } : t));
       setAssignee('');
       setUpdateMsg('Saved.');
@@ -77,12 +77,12 @@ export default function AdminTicketPage() {
     setSending(true);
     setSendError('');
     try {
-      await adminsApi.ticketsReplyCreate(id, { message: body.trim(), is_internal_note: internal, files });
+      await staffApi.ticketsReplyCreate(id, { message: body.trim(), is_internal_note: internal, files });
       setBody('');
       setInternal(false);
       setFiles([]);
       if (fileRef.current) fileRef.current.value = '';
-      setMessages(await adminsApi.ticketsMessagesList(id));
+      setMessages(await staffApi.ticketsMessagesList(id));
     } catch (err) {
       setSendError(errMsg(err, 'Could not send the reply.'));
     } finally {

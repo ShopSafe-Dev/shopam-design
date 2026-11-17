@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { adminsApi } from '@/lib/api/endpoints/admins';
+import { staffApi } from '@/lib/api/endpoints/staff';
 import type * as S from '@/lib/api/openapi-types';
 import Modal from '@/app/components/ui/Modal';
 import { Badge, Card, Empty, ErrorBox, PageHeader, Spinner, btn, errMsg, inputCls } from '../ui';
@@ -45,7 +45,7 @@ export default function VerificationsPage() {
     setLoading(true);
     setError('');
     try {
-      setItems(await adminsApi.verifyVendorList(type === 'all' ? undefined : { type }));
+      setItems(await staffApi.verifyVendorList(type === 'all' ? undefined : { type }));
     } catch (err) {
       setError(errMsg(err, 'Could not load verification requests.'));
     } finally {
@@ -61,7 +61,7 @@ export default function VerificationsPage() {
     setBusyId(v.id);
     setActionError('');
     try {
-      await adminsApi.verifyVendorCreate({ verif_id: v.id }, { status, ...(why ? { reason: why } : {}) });
+      await staffApi.verifyVendorCreate({ verif_id: v.id }, { status, ...(why ? { reason: why } : {}) });
       setItems((prev) => prev.filter((x) => x.id !== v.id));
       setRejecting(null);
       setReason('');

@@ -5,17 +5,17 @@ import type * as S from '../openapi-types';
 import { enc, type Query } from './_shared';
 
 export const reviewsApi = {
-  /** PATCH /api/reviews/admin/product-reviews/{id}/ - Hide or republish a review */
-  adminProductReviewsPartialUpdate: async (id: string, body?: S.PatchedModerateRequest, query?: Query): Promise<void> =>
-    (await apiClient.patch<void>(`/api/reviews/admin/product-reviews/${enc(id)}/`, body, { params: query })).data,
+  /** PATCH /api/reviews/staff/product-reviews/{id}/ - Hide or republish a review */
+  staffProductReviewsPartialUpdate: async (id: string, body?: S.PatchedModerateRequest, query?: Query): Promise<void> =>
+    (await apiClient.patch<void>(`/api/reviews/staff/product-reviews/${enc(id)}/`, body, { params: query })).data,
 
-  /** GET /api/reviews/admin/reported/ - Reviews with reports, most reported first */
-  adminReportedRetrieve: async (query?: Query): Promise<void> =>
-    (await apiClient.get<void>(`/api/reviews/admin/reported/`, { params: query })).data,
+  /** GET /api/reviews/staff/reported/ - Reviews with reports, most reported first */
+  staffReportedRetrieve: async (query?: Query): Promise<void> =>
+    (await apiClient.get<void>(`/api/reviews/staff/reported/`, { params: query })).data,
 
-  /** PATCH /api/reviews/admin/vendor-reviews/{id}/ - Hide or republish a review */
-  adminVendorReviewsPartialUpdate: async (id: string, body?: S.PatchedModerateRequest, query?: Query): Promise<void> =>
-    (await apiClient.patch<void>(`/api/reviews/admin/vendor-reviews/${enc(id)}/`, body, { params: query })).data,
+  /** PATCH /api/reviews/staff/vendor-reviews/{id}/ - Hide or republish a review */
+  staffVendorReviewsPartialUpdate: async (id: string, body?: S.PatchedModerateRequest, query?: Query): Promise<void> =>
+    (await apiClient.patch<void>(`/api/reviews/staff/vendor-reviews/${enc(id)}/`, body, { params: query })).data,
 
   /** GET /api/reviews/mine/ - Reviews I have written */
   mineRetrieve: async (query?: Query): Promise<void> =>

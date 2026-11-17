@@ -86,7 +86,7 @@ export default function AdminOverviewPage() {
     setLoading(true);
     setError('');
     try {
-      const res = (await analyticsApi.adminOverviewRetrieve({ period })) as unknown as Json;
+      const res = (await analyticsApi.staffOverviewRetrieve({ period })) as unknown as Json;
       setData(res && typeof res === 'object' ? res : {});
     } catch (err) {
       setError(errMsg(err, 'Could not load the overview.'));

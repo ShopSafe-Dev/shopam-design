@@ -11,7 +11,7 @@ type Item = { kind: Kind | null; data: Record<string, unknown> };
 const str = (v: unknown) => (typeof v === 'string' || typeof v === 'number' ? String(v) : '');
 
 /**
- * GET /api/reviews/admin/reported/ has no response schema. Accept either
+ * GET /api/reviews/staff/reported/ has no response schema. Accept either
  * { product_reviews: [...], vendor_reviews: [...] } (any key containing "product"/"vendor"),
  * or a flat list whose items say which kind they are. Anything else is shown read-only.
  */
@@ -48,7 +48,7 @@ export default function AdminReviewsPage() {
     setLoading(true);
     setError('');
     try {
-      setItems(normalize(await reviewsApi.adminReportedRetrieve()));
+      setItems(normalize(await reviewsApi.staffReportedRetrieve()));
     } catch (err) {
       setError(errMsg(err, 'Could not load reported reviews.'));
     } finally {
@@ -66,8 +66,8 @@ export default function AdminReviewsPage() {
     setBusyId(id);
     setActionError('');
     try {
-      if (it.kind === 'product') await reviewsApi.adminProductReviewsPartialUpdate(id, { status });
-      else await reviewsApi.adminVendorReviewsPartialUpdate(id, { status });
+      if (it.kind === 'product') await reviewsApi.staffProductReviewsPartialUpdate(id, { status });
+      else await reviewsApi.staffVendorReviewsPartialUpdate(id, { status });
       setItems((prev) => prev.map((x) => (x === it ? { ...x, data: { ...x.data, status } } : x)));
     } catch (err) {
       setActionError(errMsg(err, 'Could not update the review.'));

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { adminsApi } from '@/lib/api/endpoints/admins';
+import { staffApi } from '@/lib/api/endpoints/staff';
 import { Card, ErrorBox, PageHeader, btn, errMsg, inputCls } from '../ui';
 
 export default function AdminStaffPage() {
@@ -27,7 +27,7 @@ export default function AdminStaffPage() {
         password: form.password,
         ...(form.username.trim() ? { username: form.username.trim() } : {}),
       };
-      await adminsApi.createStaffCreate(body as Parameters<typeof adminsApi.createStaffCreate>[0]);
+      await staffApi.createStaffCreate(body as Parameters<typeof staffApi.createStaffCreate>[0]);
       setDone(`Staff account created for ${form.email.trim()}.`);
       setForm({ email: '', username: '', password: '' });
     } catch (err) {

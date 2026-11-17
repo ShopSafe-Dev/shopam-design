@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { adminsApi } from '@/lib/api/endpoints/admins';
+import { staffApi } from '@/lib/api/endpoints/staff';
 import ConfirmTypeModal from '@/app/components/ui/ConfirmTypeModal';
 import { Card, ErrorBox, PageHeader, btn, errMsg, inputCls } from '../ui';
 
@@ -21,7 +21,7 @@ export default function AdminPayoutsPage() {
     setError('');
     try {
       // Response body is not described in the spec: show whatever comes back.
-      const res: unknown = await adminsApi.settleCreate({ order_id: orderId.trim() });
+      const res: unknown = await staffApi.settleCreate({ order_id: orderId.trim() });
       setResult(res ? JSON.stringify(res, null, 2) : 'Payout triggered.');
       setOpen(false);
       setOrderId('');
