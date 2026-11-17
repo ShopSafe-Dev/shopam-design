@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { SLASH_ROUTES } from '@/lib/api/slash-routes';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -28,7 +29,11 @@ async function proxy(request: NextRequest, segments: string[]): Promise<NextResp
     return NextResponse.json({ detail: 'Invalid path' }, { status: 400 });
   }
 
-  const path = '/api/' + rawPath;
+  // Next (trailingSlash:false) strips trailing slashes before this handler runs, but the
+  // backend spec requires one on some routes (notifications, reviews, posts/messages, ...).
+  // Re-add it only for those routes (generated from the spec).
+  let path = '/api/' + rawPath;
+  if (SLASH_ROUTES.some((re) => re.test(path))) path += '/';
   const search = request.nextUrl.search;
   const target = `${BACKEND}${path}${search}`;
 
