@@ -27,23 +27,33 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [gate, setGate] = useState<Gate>('checking');
   const ran = useRef(false);
 
-  useEffect(() => {
-    if (ran.current) return;
-    ran.current = true;
-    (async () => {
+useEffect(() => {
+  if (ran.current) return;
+  ran.current = true;
+  (async () => {
+    try {
       const user = await authService.ensureUser();
       if (!user) {
         window.location.replace('/auth/signin?redirect=' + encodeURIComponent(pathname));
         return;
       }
-      // The profile has no staff flag, so ask the backend: an admin-only call answers 403 for non-staff.
-      if (user.is_admin === false){
-        window.location.replace("/dashboard")
+      if (user.is_admin === false) {
+        setGate('denied');
+        return;
       }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
+      if (user.is_admin === true) {
+        setGate('ok');
+        return;
+      }
+      // is_admin missing from the profile: fall back to an admin-only call
+      await adminsApi.ticketsList();   // 403 for non-staff
+      setGate('ok');
+    } catch (err) {
+      setGate(httpStatus(err) === 403 ? 'denied' : 'error');
+    }
+  })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
   const signOut = () => {
     authService.logout().finally(() => {
       window.location.href = '/auth/signin';
