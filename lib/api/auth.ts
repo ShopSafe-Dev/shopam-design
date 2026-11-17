@@ -68,7 +68,8 @@ export const authService = {
 
 
   async changePassword(data: PasswordChangeRequest): Promise<void> {
-    await apiClient.post(API_ENDPOINTS.AUTH.PASSWORD_CHANGE, data);
+    // The spec marks old_password1 as required alongside old_password; send the same value.
+    await apiClient.post(API_ENDPOINTS.AUTH.PASSWORD_CHANGE, { old_password1: data.old_password, ...data });
   },
 
   /**
@@ -135,6 +136,16 @@ export const authService = {
     await apiClient.post(API_ENDPOINTS.AUTH.RESET_PASSWORD, data);
   },
 
+
+  /**
+   * Re-send the verification link (rate-limited to 3/hour by the backend).
+   * NOTE: POST /api/accounts/email-verify-send is session-protected in the middleware, and an
+   * unverified user has no session, so for them this answers 401 until the backend allows it
+   * publicly. The email is sent in the body for that case.
+   */
+  async resendVerification(email?: string): Promise<void> {
+    await apiClient.post('/api/accounts/email-verify-send', email ? { email } : undefined);
+  },
 
   async verifyEmail(token: string): Promise<{ authenticated: boolean }> {
     try {
