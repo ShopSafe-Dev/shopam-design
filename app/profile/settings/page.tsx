@@ -14,6 +14,8 @@ import { authService } from '@/lib/api';
 import AppBar from '@/app/components/ui/AppBar';
 import Field from '@/app/components/ui/Field';
 import Modal from '@/app/components/ui/Modal';
+import ConfirmTypeModal from '@/app/components/ui/ConfirmTypeModal';
+import ChangePasswordModal from '@/app/components/auth/ChangePasswordModal';
 import Switch from '@/app/components/ui/Switch';
 import BottomNav from '@/app/components/BottomNav';
 
@@ -86,11 +88,10 @@ export default function CustomerSettingsPage() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [deactivateOpen, setDeactivateOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   const [form, setForm] = useState({ first_name: '', last_name: '', username: '', phone: '' });
-  const [pw, setPw] = useState({ old_password: '', new_password: '', confirm: '' });
   const [profileError, setProfileError] = useState('');
-  const [pwError, setPwError] = useState('');
   const [prefs, setPrefs] = useState({ orders: true, messages: true, promos: false });
 
   useEffect(() => {
@@ -139,43 +140,22 @@ export default function CustomerSettingsPage() {
     }
   };
 
-  const savePassword = async () => {
-    setPwError('');
-    if (pw.new_password.length < 6) {
-      setPwError('New password must be at least 6 characters.');
-      return;
-    }
-    if (pw.new_password !== pw.confirm) {
-      setPwError('New passwords do not match.');
-      return;
-    }
-    setSaving(true);
-    try {
-      await authService.changePassword({ old_password: pw.old_password, new_password: pw.new_password });
-      setPw({ old_password: '', new_password: '', confirm: '' });
-      setPasswordOpen(false);
-    } catch (err) {
-      const data = (err as { response?: { data?: { message?: string } } })?.response?.data;
-      setPwError(data?.message || 'Could not change password. Check your current password.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const signOut = () => {
     authService.logout().finally(() => {
       window.location.href = '/';
     });
   };
 
+  // Only reachable from ConfirmTypeModal after the user typed the confirmation phrase.
   const deactivate = async () => {
+    setDeleteError('');
     setSaving(true);
     try {
       await authService.deactivateAccount();
-    } catch {
-      /* ignore */
-    } finally {
       window.location.href = '/';
+    } catch {
+      setSaving(false);
+      setDeleteError('Could not delete your account. Please try again.');
     }
   };
 
@@ -240,9 +220,12 @@ export default function CustomerSettingsPage() {
             />
             <SettingRow
               icon={Trash2}
-              title="Deactivate account"
-              subtitle="Temporarily disable your account"
-              onClick={() => setDeactivateOpen(true)}
+              title="Delete account"
+              subtitle="Delete your account and sign out"
+              onClick={() => {
+                setDeleteError('');
+                setDeactivateOpen(true);
+              }}
               danger
             />
           </div>
@@ -285,56 +268,26 @@ export default function CustomerSettingsPage() {
       </Modal>
 
       {/* Change password */}
-      <Modal
-        open={passwordOpen}
-        title="Change password"
-        onClose={() => setPasswordOpen(false)}
-        footer={
-          <button onClick={savePassword} disabled={saving} className={primaryBtn}>
-            {saving && <Loader2 size={16} className="animate-spin" />}
-            Update password
-          </button>
-        }
-      >
-        <div className="space-y-4">
-          {pwError && (
-            <div className="rounded-xl bg-red-50 px-3.5 py-2.5 text-xs font-medium text-red-600">{pwError}</div>
-          )}
-          <Field label="Current password" type="password" value={pw.old_password} onChange={(v) => setPw({ ...pw, old_password: v })} autoComplete="current-password" />
-          <Field label="New password" type="password" value={pw.new_password} onChange={(v) => setPw({ ...pw, new_password: v })} autoComplete="new-password" />
-          <Field label="Confirm new password" type="password" value={pw.confirm} onChange={(v) => setPw({ ...pw, confirm: v })} autoComplete="new-password" />
-        </div>
-      </Modal>
+      <ChangePasswordModal open={passwordOpen} onClose={() => setPasswordOpen(false)} />
 
-      {/* Deactivate */}
-      <Modal
+      {/* Delete account: type-to-confirm before the API is called */}
+      <ConfirmTypeModal
         open={deactivateOpen}
-        title="Deactivate account"
-        description="You can reactivate by signing in again."
-        onClose={() => setDeactivateOpen(false)}
-        footer={
-          <div className="flex gap-3">
-            <button
-              onClick={() => setDeactivateOpen(false)}
-              className="flex-1 rounded-full border border-slate-200 py-3.5 text-sm font-bold text-ink transition-colors hover:bg-slate-50"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={deactivate}
-              disabled={saving}
-              className="flex-1 rounded-full bg-red-600 py-3.5 text-sm font-bold text-white transition-colors hover:bg-red-700 disabled:opacity-60"
-            >
-              Deactivate
-            </button>
-          </div>
+        title="Delete account"
+        description="This signs you out and removes your account."
+        warning={
+          <>
+            Your account will be deleted and you will be signed out everywhere. To undo this you would need to contact
+            support.
+          </>
         }
-      >
-        <p className="text-sm text-slate-600">
-          This will sign you out and temporarily disable your account. Your data is kept safe and restored if you sign
-          back in.
-        </p>
-      </Modal>
+        confirmText="DELETE"
+        actionLabel="Delete my account"
+        busy={saving}
+        error={deleteError}
+        onConfirm={deactivate}
+        onClose={() => setDeactivateOpen(false)}
+      />
 
       <BottomNav />
     </div>

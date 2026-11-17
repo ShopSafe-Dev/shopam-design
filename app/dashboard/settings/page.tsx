@@ -6,6 +6,7 @@ import { authService } from '@/lib/api';
 import Field from '../components/Field';
 import Modal from '../components/Modal';
 import Switch from '../components/Switch';
+import ChangePasswordModal from '@/app/components/auth/ChangePasswordModal';
 
 function Row({ title, subtitle, action }: { title: string; subtitle: string; action: React.ReactNode }) {
   return (
@@ -31,6 +32,7 @@ function SectionTitle({ icon: Icon, title }: { icon: typeof Store; title: string
 export default function SettingsPage() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [businessOpen, setBusinessOpen] = useState(false);
+  const [passwordOpen, setPasswordOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const [profile, setProfile] = useState({
@@ -147,12 +149,31 @@ export default function SettingsPage() {
 
       <p className="pb-2 text-center text-[11px] text-slate-500">Some settings are saved locally until the backend endpoints are finalised.</p>
 
+      {/* Security */}
+      <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
+        <SectionTitle icon={ShieldCheck} title="Security" />
+        <Row
+          title="Password"
+          subtitle="Change the password you sign in with"
+          action={
+            <button
+              onClick={() => setPasswordOpen(true)}
+              className="rounded-full border border-slate-200 px-3.5 py-1.5 text-xs font-semibold text-ink transition-colors hover:bg-slate-50"
+            >
+              Change
+            </button>
+          }
+        />
+      </section>
+
       {/* Sign out */}
       <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
         <button onClick={signOut} className="flex w-full items-center gap-3 px-4 py-3.5 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50">
           <LogOut size={17} /> Sign out
         </button>
       </section>
+
+      <ChangePasswordModal open={passwordOpen} onClose={() => setPasswordOpen(false)} />
 
       {/* Update Profile dialog */}
       <Modal

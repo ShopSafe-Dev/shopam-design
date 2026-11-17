@@ -55,7 +55,8 @@ function SignInForm() {
       const data = err.response?.data;
 
       if (data?.error === 'EMAIL_NOT_VERIFIED' || data?.code === 'EMAIL_NOT_VERIFIED' || data?.detail === 'Email not verified') {
-        router.push('/auth/user-verify');
+        // Backend re-sends the link on this login attempt; show the email + a notice.
+        router.push(`/auth/user-verify?from=login&email=${encodeURIComponent(formData.email.trim())}`);
         return;
       }
 

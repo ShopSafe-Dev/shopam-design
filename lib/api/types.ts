@@ -201,6 +201,7 @@ export interface UpdateCartItemRequest {
 // Auth Request Types
 export interface PasswordChangeRequest {
   old_password: string;
+  old_password1?: string;
   new_password: string;
 }
 

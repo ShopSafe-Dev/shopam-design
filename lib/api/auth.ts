@@ -1,5 +1,6 @@
 import apiClient, { API_ENDPOINTS } from './config';
 import { DEV_AUTH_BYPASS, DEV_USER } from '../devAuth';
+import { getState, setUser, clearUser } from '../auth/session';
 import type {
   UserRegister,
   VendorRegister,
@@ -15,14 +16,9 @@ import type {
 } from './types';
 
 
-function setRoleCookie(isVendor: boolean) {
-  const secure = typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : '';
-  document.cookie = `shopam_role=${isVendor ? 'vendor' : 'customer'}; Path=/; Max-Age=2592000; SameSite=Lax${secure}`;
-}
+export { clearRoleCookie } from '../auth/session';
 
-export function clearRoleCookie() {
-  document.cookie = 'shopam_role=; Path=/; Max-Age=0; SameSite=Lax';
-}
+let inflight: Promise<UserProfile | null> | null = null;
 
 export const authService = {
 
@@ -52,40 +48,28 @@ export const authService = {
       ? { email: (data as any).username, password: data.password }
       : data;
     const response = await apiClient.post<any>(API_ENDPOINTS.AUTH.LOGIN, payload);
+    // The backend middleware moves the JWTs into an HttpOnly cookie and strips them from
+    // the body, so only the user comes back. Nothing secret is stored here.
     const raw = response.data;
-
-    // API wraps tokens: { tokens: { access, refresh }, user } — normalise to flat LoginResponse
-    const access: string = raw.tokens?.access ?? raw.access ?? '';
-    const refresh: string = raw.tokens?.refresh ?? raw.refresh ?? '';
     const user: UserProfile = raw.user ?? raw;
-
-    localStorage.setItem('user', JSON.stringify(user));
-    setRoleCookie(!!user.is_vendor);
-
-    return { access, refresh, user };
+    setUser(user);
+    return { access: '', refresh: '', user };
   },
 
 
   async logout(): Promise<void> {
     try {
-      const refresh = localStorage.getItem('refresh_token');
-      if (refresh) {
-        await apiClient.post(API_ENDPOINTS.AUTH.LOGOUT, { refresh });
-      } else {
-        await apiClient.post(API_ENDPOINTS.AUTH.LOGOUT);
-      }
+      // Backend deletes the Redis session + cookie.
+      await apiClient.post(API_ENDPOINTS.AUTH.LOGOUT);
     } finally {
-      // Clear tokens even if API call fails
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
-      localStorage.removeItem('user');
-      clearRoleCookie();
+      clearUser();
     }
   },
 
 
   async changePassword(data: PasswordChangeRequest): Promise<void> {
-    await apiClient.post(API_ENDPOINTS.AUTH.PASSWORD_CHANGE, data);
+    // The spec marks old_password1 as required alongside old_password; send the same value.
+    await apiClient.post(API_ENDPOINTS.AUTH.PASSWORD_CHANGE, { old_password1: data.old_password, ...data });
   },
 
   /**
@@ -97,30 +81,45 @@ export const authService = {
     return response.data?.user ?? response.data;
   },
 
-  // Check if user is authenticated
+  /** Sync check against the cached user. Use ensureUser() when you need server truth. */
   isAuthenticated(): boolean {
     if (DEV_AUTH_BYPASS) return true;
-    return !!localStorage.getItem('user');
+    return getState().user !== null;
   },
 
-  // Get stored user data
+  /** Cached user (memory / sessionStorage snapshot). May be stale until ensureUser() settles. */
   getCurrentUser(): UserProfile | null {
     if (DEV_AUTH_BYPASS) return DEV_USER;
-    const userStr = localStorage.getItem('user');
-    if (!userStr) return null;
-
-    try {
-      return JSON.parse(userStr);
-    } catch {
-      return null;
-    }
+    return getState().user;
   },
 
   /**
-   * Get access token
+   * Resolve the signed-in user from the cookie session via GET /api/accounts/profile.
+   * Deduplicated; resolves null for guests. Pass { force: true } to re-check the server.
    */
-  getAccessToken(): string | null {
-    return localStorage.getItem('access_token');
+  async ensureUser(opts?: { force?: boolean }): Promise<UserProfile | null> {
+    if (DEV_AUTH_BYPASS) return DEV_USER;
+    const s = getState();
+    if (!opts?.force && s.status !== 'unknown') return s.user;
+    if (!inflight) {
+      inflight = (async () => {
+        try {
+          const response = await apiClient.get<any>(API_ENDPOINTS.AUTH.PROFILE);
+          const user: UserProfile = response.data?.user ?? response.data;
+          setUser(user);
+          return user;
+        } catch (err: any) {
+          if (err?.response?.status === 401) {
+            clearUser();
+            return null;
+          }
+          return getState().user; // network/5xx: cannot tell, keep what we have
+        } finally {
+          inflight = null;
+        }
+      })();
+    }
+    return inflight;
   },
 
   /**
@@ -137,6 +136,16 @@ export const authService = {
     await apiClient.post(API_ENDPOINTS.AUTH.RESET_PASSWORD, data);
   },
 
+
+  /**
+   * Re-send the verification link (rate-limited to 3/hour by the backend).
+   * NOTE: POST /api/accounts/email-verify-send is session-protected in the middleware, and an
+   * unverified user has no session, so for them this answers 401 until the backend allows it
+   * publicly. The email is sent in the body for that case.
+   */
+  async resendVerification(email?: string): Promise<void> {
+    await apiClient.post('/api/accounts/email-verify-send', email ? { email } : undefined);
+  },
 
   async verifyEmail(token: string): Promise<{ authenticated: boolean }> {
     try {
@@ -157,12 +166,12 @@ export const authService = {
     }
   },
   /**
-   * Fetch the full profile from the server and update localStorage
+   * Fetch the full profile from the server and refresh the cached user
    */
   async refreshProfile(): Promise<UserProfile> {
     const response = await apiClient.get<any>(API_ENDPOINTS.AUTH.PROFILE);
     const profile: UserProfile = response.data?.user ?? response.data;
-    localStorage.setItem('user', JSON.stringify(profile));
+    setUser(profile);
     return profile;
   },
 
@@ -175,7 +184,7 @@ export const authService = {
     const raw = response.data ?? {};
     const user: UserProfile = raw.user ?? raw;
     const vendor_profile: VendorProfile | undefined = raw.vendor_profile ?? raw.profile ?? undefined;
-    localStorage.setItem('user', JSON.stringify(user));
+    setUser(user);
     return { user, vendor_profile };
   },
 
@@ -187,7 +196,7 @@ export const authService = {
       API_ENDPOINTS.AUTH.PROFILE_UPDATE,
       data
     );
-    localStorage.setItem('user', JSON.stringify(response.data));
+    setUser(response.data);
     return response.data;
   },
 
@@ -196,9 +205,6 @@ export const authService = {
    */
   async deactivateAccount(): Promise<void> {
     await apiClient.delete(API_ENDPOINTS.AUTH.PROFILE_DEACTIVATE);
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem('user');
-    clearRoleCookie();
+    clearUser();
   },
 };

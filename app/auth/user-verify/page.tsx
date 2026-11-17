@@ -12,12 +12,38 @@ function UserVerifyForm() {
   const searchParams = useSearchParams();
   const urlToken = searchParams.get('token');
   const emailHint = searchParams.get('email');
+  const fromLogin = searchParams.get('from') === 'login';
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
-  const [resendTimer, setResendTimer] = useState(60);
+  const [resendTimer, setResendTimer] = useState(fromLogin ? 60 : 0);
   const [verifiedNeedsSignIn, setVerifiedNeedsSignIn] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [notice, setNotice] = useState('');
+
+  const resend = async () => {
+    if (resending) return;
+    setError('');
+    setNotice('');
+    setResending(true);
+    try {
+      await authService.resendVerification(emailHint ?? undefined);
+      setNotice('A new verification link is on its way. Check your inbox and spam folder.');
+      setResendTimer(60);
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 429) {
+        setError('Too many requests. You can request up to 3 links per hour. Please try again later.');
+      } else if (status === 401) {
+        setError('Sign in with your email and password and we will send you a fresh link automatically.');
+      } else {
+        setError('Could not send the link. Please try again.');
+      }
+    } finally {
+      setResending(false);
+    }
+  };
 
   useEffect(() => {
     if (!urlToken) return;
@@ -102,6 +128,17 @@ function UserVerifyForm() {
           </div>
         )}
 
+        {fromLogin && !notice && !error && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+            Your email isn&apos;t verified yet. We sent a new verification link when you tried to sign in.
+          </div>
+        )}
+        {notice && (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+            {notice}
+          </div>
+        )}
+
         <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500">
           Didn&apos;t receive it? Check your spam folder or request a new link.
         </div>
@@ -115,12 +152,11 @@ function UserVerifyForm() {
           ) : (
             <button
               type="button"
-              onClick={() => {
-                setResendTimer(60);
-                setError('');
-              }}
-              className="text-sm font-semibold text-[#FA3728] transition-colors hover:text-[#E31B23] hover:underline"
+              onClick={resend}
+              disabled={resending}
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#FA3728] transition-colors hover:text-[#E31B23] hover:underline disabled:opacity-60"
             >
+              {resending && <Loader2 size={13} className="animate-spin" />}
               Resend verification link
             </button>
           )}
