@@ -5,18 +5,6 @@ import type * as S from '../openapi-types';
 import { enc, type Query } from './_shared';
 
 export const reviewsApi = {
-  /** PATCH /api/reviews/staff/product-reviews/{id}/ - Hide or republish a review */
-  staffProductReviewsPartialUpdate: async (id: string, body?: S.PatchedModerateRequest, query?: Query): Promise<void> =>
-    (await apiClient.patch<void>(`/api/reviews/staff/product-reviews/${enc(id)}/`, body, { params: query })).data,
-
-  /** GET /api/reviews/staff/reported/ - Reviews with reports, most reported first */
-  staffReportedRetrieve: async (query?: Query): Promise<void> =>
-    (await apiClient.get<void>(`/api/reviews/staff/reported/`, { params: query })).data,
-
-  /** PATCH /api/reviews/staff/vendor-reviews/{id}/ - Hide or republish a review */
-  staffVendorReviewsPartialUpdate: async (id: string, body?: S.PatchedModerateRequest, query?: Query): Promise<void> =>
-    (await apiClient.patch<void>(`/api/reviews/staff/vendor-reviews/${enc(id)}/`, body, { params: query })).data,
-
   /** GET /api/reviews/mine/ - Reviews I have written */
   mineRetrieve: async (query?: Query): Promise<void> =>
     (await apiClient.get<void>(`/api/reviews/mine/`, { params: query })).data,
@@ -56,6 +44,18 @@ export const reviewsApi = {
   /** GET /api/reviews/products/{target_id}/reviews/ - List published reviews */
   productsReviewsRetrieve: async (targetId: string, query?: { ordering?: "highest" | "lowest" | "oldest" | "recent"; rating?: number }): Promise<void> =>
     (await apiClient.get<void>(`/api/reviews/products/${enc(targetId)}/reviews/`, { params: query })).data,
+
+  /** PATCH /api/reviews/staff/product-reviews/{id}/ - Hide or republish a review */
+  staffProductReviewsPartialUpdate: async (id: string, body?: S.PatchedModerateRequest, query?: Query): Promise<void> =>
+    (await apiClient.patch<void>(`/api/reviews/staff/product-reviews/${enc(id)}/`, body, { params: query })).data,
+
+  /** GET /api/reviews/staff/reported/ - Reviews with reports, most reported first */
+  staffReportedRetrieve: async (query?: Query): Promise<void> =>
+    (await apiClient.get<void>(`/api/reviews/staff/reported/`, { params: query })).data,
+
+  /** PATCH /api/reviews/staff/vendor-reviews/{id}/ - Hide or republish a review */
+  staffVendorReviewsPartialUpdate: async (id: string, body?: S.PatchedModerateRequest, query?: Query): Promise<void> =>
+    (await apiClient.patch<void>(`/api/reviews/staff/vendor-reviews/${enc(id)}/`, body, { params: query })).data,
 
   /** POST /api/reviews/vendor-reviews/ - Review the seller of an order you received */
   vendorReviewsCreate: async (body: S.CreateVendorReviewRequest, query?: Query): Promise<S.VendorReview> =>

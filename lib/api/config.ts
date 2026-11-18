@@ -1,14 +1,17 @@
 import axios, { AxiosError, AxiosInstance } from 'axios';
 import { ensureDevSession } from '../devAuth';
 import { clearUser } from '../auth/session';
+import { API_BASE_URL, API_IS_CROSS_ORIGIN } from './env';
 
-// Base URL for the API — empty string routes through Next.js rewrites (/api/* → https://api.shopam.net/api/*)
-export const API_BASE_URL = '';
+// Base URL comes from env (see lib/api/env.ts). Empty = same-origin Next.js proxy.
+export { API_BASE_URL };
 
 
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000, // 30 seconds
+  // Only needed when calling the backend directly (cookie session across origins).
+  withCredentials: API_IS_CROSS_ORIGIN,
 });
 
 // Dev-only: set the role hint cookie for the dev auth bypass.

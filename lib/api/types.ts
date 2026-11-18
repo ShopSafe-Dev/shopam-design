@@ -67,8 +67,8 @@ export interface UserProfile {
   last_name?: string;
   phone: string;
   is_customer?: boolean;
+  is_admin?: boolean;
   is_vendor?: boolean;
-  is_admin?:boolean;
 }
 
 export interface VendorProfile {

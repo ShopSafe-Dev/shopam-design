@@ -5,13 +5,13 @@ import type * as S from '../openapi-types';
 import { enc, type Query } from './_shared';
 
 export const analyticsApi = {
-  /** GET /api/analytics/staff/overview/ - Platform GMV, orders, commission revenue, signups, disputes, series, top vendors/products */
-  staffOverviewRetrieve: async (query?: { end?: string; period?: "12m" | "30d" | "7d" | "90d"; start?: string }): Promise<void> =>
-    (await apiClient.get<void>(`/api/analytics/staff/overview/`, { params: query })).data,
-
   /** POST /api/analytics/events/ - Report share / contact-click events */
   eventsCreate: async (body: S.EventsRequest, query?: Query): Promise<void> =>
     (await apiClient.post<void>(`/api/analytics/events/`, body, { params: query })).data,
+
+  /** GET /api/analytics/staff/overview/ - Platform GMV, orders, commission revenue, signups, disputes, series, top vendors/products */
+  staffOverviewRetrieve: async (query?: { end?: string; period?: "12m" | "30d" | "7d" | "90d"; start?: string }): Promise<void> =>
+    (await apiClient.get<void>(`/api/analytics/staff/overview/`, { params: query })).data,
 
   /** GET /api/analytics/vendor/overview/ - Sales, earnings, views, funnel, daily series, balance, followers, rating */
   vendorOverviewRetrieve: async (query?: { end?: string; period?: "12m" | "30d" | "7d" | "90d"; start?: string }): Promise<void> =>
