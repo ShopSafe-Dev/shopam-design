@@ -10,18 +10,18 @@ import { staffApi } from '@/lib/api/endpoints/staff';
 import ShopSafeLogo from '@/app/components/ui/ShopSafeLogo';
 
 const NAV: { href: string; label: string; icon: LucideIcon }[] = [
-  { href: '/admin', label: 'Overview', icon: Home },
-  { href: '/admin/verifications', label: 'Verifications', icon: ShieldCheck },
-  { href: '/admin/tickets', label: 'Tickets', icon: MessageCircle },
-  { href: '/admin/payouts', label: 'Payouts', icon: Wallet },
-  { href: '/admin/reviews', label: 'Reviews', icon: FileText },
-  { href: '/admin/mailer', label: 'Mailer', icon: Bell },
-  { href: '/admin/staff', label: 'Staff', icon: User },
+  { href: '/staff-panel', label: 'Overview', icon: Home },
+  { href: '/staff-panel/verifications', label: 'Verifications', icon: ShieldCheck },
+  { href: '/staff-panel/tickets', label: 'Tickets', icon: MessageCircle },
+  { href: '/staff-panel/payouts', label: 'Payouts', icon: Wallet },
+  { href: '/staff-panel/reviews', label: 'Reviews', icon: FileText },
+  { href: '/staff-panel/mailer', label: 'Mailer', icon: Bell },
+  { href: '/staff-panel/staff', label: 'Staff', icon: User },
 ];
 
 type Gate = 'checking' | 'ok' | 'denied';
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default function StaffLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [gate, setGate] = useState<Gate>('checking');
   const ran = useRef(false);
@@ -53,7 +53,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (gate !== 'ok') {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-canvas px-6 text-center">
-        <h1 className="text-lg font-bold text-ink">Admin access only</h1>
+        <h1 className="text-lg font-bold text-ink">Staff access only</h1>
         <p className="max-w-sm text-sm text-slate-600">
           Your account does not have staff permissions.
         </p>
@@ -64,17 +64,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  const isActive = (href: string) => (href === '/admin' ? pathname === href : pathname.startsWith(href));
+  const isActive = (href: string) => (href === '/staff-panel' ? pathname === href : pathname.startsWith(href));
 
   return (
     <div className="min-h-screen bg-canvas font-sans text-ink antialiased">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-slate-200/70 bg-white md:flex">
         <div className="px-5 pb-2 pt-6">
-          <Link href="/admin" aria-label="Admin home">
+          <Link href="/staff-panel" aria-label="Staff home">
             <ShopSafeLogo height={28} />
           </Link>
         </div>
-        <p className="px-5 pb-3 pt-2 text-[11px] font-bold uppercase tracking-widest text-slate-500">Admin</p>
+        <p className="px-5 pb-3 pt-2 text-[11px] font-bold uppercase tracking-widest text-slate-500">Staff</p>
         <nav className="flex-1 space-y-1 px-3">
           {NAV.map(({ href, label, icon: Icon }) => (
             <Link

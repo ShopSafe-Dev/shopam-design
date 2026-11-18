@@ -37,7 +37,7 @@ function normalize(raw: unknown): Item[] {
   return out;
 }
 
-export default function AdminReviewsPage() {
+export default function StaffReviewsPage() {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

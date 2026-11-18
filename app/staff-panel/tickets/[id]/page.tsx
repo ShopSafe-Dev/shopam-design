@@ -11,7 +11,7 @@ import { asList, Badge, Card, ErrorBox, PRIORITY_TONE, STATUS_TONE, Spinner, btn
 const STATUSES: S.AdminTicketUpdateRequestStatusEnum[] = ['open', 'pending', 'resolved', 'rejected', 'closed'];
 const MAX_FILES = 3;
 
-export default function AdminTicketPage() {
+export default function StaffTicketPage() {
   const { id } = useParams<{ id: string }>();
   const [ticket, setTicket] = useState<S.SupportTicketList | null>(null);
   const [messages, setMessages] = useState<S.TicketMessage[]>([]);
@@ -33,7 +33,7 @@ export default function AdminTicketPage() {
   const load = useCallback(async () => {
     setError('');
     try {
-      // There is no admin "get one ticket" endpoint: read the header from the list.
+      // There is no staff "get one ticket" endpoint: read the header from the list.
       const [rawList, rawMsgs] = await Promise.all([staffApi.ticketsList(), staffApi.ticketsMessagesList(id)]);
       const list = asList<S.SupportTicketList>(rawList);
       const msgs = asList<S.TicketMessage>(rawMsgs);
@@ -106,7 +106,7 @@ export default function AdminTicketPage() {
 
   return (
     <>
-      <Link href="/admin/tickets" className="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-ink">
+      <Link href="/staff-panel/tickets" className="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-ink">
         <ArrowLeft size={15} /> All tickets
       </Link>
 

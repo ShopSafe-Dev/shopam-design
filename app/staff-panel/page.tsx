@@ -76,7 +76,7 @@ function Section({ title, data }: { title?: string; data: Json }) {
   );
 }
 
-export default function AdminOverviewPage() {
+export default function StaffOverviewPage() {
   const [period, setPeriod] = useState<Period>('30d');
   const [data, setData] = useState<Json | null>(null);
   const [error, setError] = useState('');

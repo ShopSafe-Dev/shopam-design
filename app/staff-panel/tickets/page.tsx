@@ -4,11 +4,11 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { staffApi } from '@/lib/api/endpoints/staff';
 import type * as S from '@/lib/api/openapi-types';
-import { Badge, Card, Empty, ErrorBox, PageHeader, PRIORITY_TONE, Spinner, STATUS_TONE, errMsg, fmtDate, inputCls } from '../ui';
+import { asList, Badge, Card, Empty, ErrorBox, PageHeader, PRIORITY_TONE, Spinner, STATUS_TONE, errMsg, fmtDate, inputCls } from '../ui';
 
 const FILTERS = ['all', 'open', 'pending', 'resolved', 'rejected', 'closed'] as const;
 
-export default function AdminTicketsPage() {
+export default function StaffTicketsPage() {
   const [tickets, setTickets] = useState<S.SupportTicketList[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -19,7 +19,7 @@ export default function AdminTicketsPage() {
     setLoading(true);
     setError('');
     try {
-      setTickets(await staffApi.ticketsList());
+      setTickets(asList<S.SupportTicketList>(await staffApi.ticketsList()));
     } catch (err) {
       setError(errMsg(err, 'Could not load tickets.'));
     } finally {
@@ -66,7 +66,7 @@ export default function AdminTicketsPage() {
       ) : (
         <Card className="divide-y divide-slate-100 overflow-hidden">
           {rows.map((t) => (
-            <Link key={t.id} href={`/admin/tickets/${t.id}`} className="block px-4 py-3.5 transition-colors hover:bg-slate-50">
+            <Link key={t.id} href={`/staff-panel/tickets/${t.id}`} className="block px-4 py-3.5 transition-colors hover:bg-slate-50">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="min-w-0 truncate text-sm font-bold text-ink">
                   <span className="mr-2 font-mono text-xs text-slate-500">{t.reference}</span>

@@ -7,7 +7,7 @@ import { Card, ErrorBox, PageHeader, btn, errMsg, inputCls } from '../ui';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export default function AdminPayoutsPage() {
+export default function StaffPayoutsPage() {
   const [orderId, setOrderId] = useState('');
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);

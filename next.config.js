@@ -26,7 +26,7 @@ const nextConfig = {
       },
     ];
   },
-  // Proxying is handled by app/api/[...path]/route.ts and app/admins/[...path]/route.ts
+  // Proxying is handled by app/api/[...path]/route.ts and app/staff/[...path]/route.ts
   // so that X-Forwarded-Host is NOT forwarded (the backend rejects localhost:3000).
 
   async headers() {

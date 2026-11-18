@@ -5,7 +5,7 @@ import { Loader2 } from 'lucide-react';
 import { staffApi } from '@/lib/api/endpoints/staff';
 import { Card, ErrorBox, PageHeader, btn, errMsg, inputCls } from '../ui';
 
-export default function AdminStaffPage() {
+export default function StaffAccountsPage() {
   const [form, setForm] = useState({ email: '', username: '', password: '' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -39,7 +39,7 @@ export default function AdminStaffPage() {
 
   return (
     <>
-      <PageHeader title="Staff" subtitle="Create an admin staff account" />
+      <PageHeader title="Staff" subtitle="Create a staff account" />
       <Card className="max-w-xl p-5">
         <form onSubmit={submit} className="space-y-4" noValidate>
           {error && <ErrorBox message={error} />}
