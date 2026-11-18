@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { mailerApi } from '@/lib/api/endpoints/mailer';
 import type * as S from '@/lib/api/openapi-types';
-import { Badge, Card, Empty, ErrorBox, PageHeader, Spinner, errMsg, fmtDate, inputCls } from '../ui';
+import { asList, Badge, Card, Empty, ErrorBox, PageHeader, Spinner, errMsg, fmtDate, inputCls } from '../ui';
 
 const STATUSES: S.EmailDeliveryStatusEnum[] = ['queued', 'accepted', 'delivered', 'delayed', 'bounced', 'complained', 'rejected', 'failed', 'unconfirmed'];
 const GOOD = new Set(['delivered', 'accepted']);
@@ -31,7 +31,7 @@ export default function AdminMailerPage() {
         }),
       ]);
       setSummary(s);
-      setRows(d);
+      setRows(asList<S.Delivery>(d));
     } catch (err) {
       setError(errMsg(err, 'Could not load email deliveries.'));
     } finally {

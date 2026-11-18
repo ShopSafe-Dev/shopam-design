@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { staffApi } from '@/lib/api/endpoints/staff';
 import type * as S from '@/lib/api/openapi-types';
-import { Badge, Card, ErrorBox, PRIORITY_TONE, STATUS_TONE, Spinner, btn, errMsg, fmtDate, inputCls } from '../../ui';
+import { asList, Badge, Card, ErrorBox, PRIORITY_TONE, STATUS_TONE, Spinner, btn, errMsg, fmtDate, inputCls } from '../../ui';
 
 const STATUSES: S.AdminTicketUpdateRequestStatusEnum[] = ['open', 'pending', 'resolved', 'rejected', 'closed'];
 const MAX_FILES = 3;
@@ -34,7 +34,9 @@ export default function AdminTicketPage() {
     setError('');
     try {
       // There is no admin "get one ticket" endpoint: read the header from the list.
-      const [list, msgs] = await Promise.all([staffApi.ticketsList(), staffApi.ticketsMessagesList(id)]);
+      const [rawList, rawMsgs] = await Promise.all([staffApi.ticketsList(), staffApi.ticketsMessagesList(id)]);
+      const list = asList<S.SupportTicketList>(rawList);
+      const msgs = asList<S.TicketMessage>(rawMsgs);
       const t = list.find((x) => x.id === id) ?? null;
       setTicket(t);
       if (t?.status) setStatus(t.status);
@@ -82,7 +84,7 @@ export default function AdminTicketPage() {
       setInternal(false);
       setFiles([]);
       if (fileRef.current) fileRef.current.value = '';
-      setMessages(await staffApi.ticketsMessagesList(id));
+      setMessages(asList<S.TicketMessage>(await staffApi.ticketsMessagesList(id)));
     } catch (err) {
       setSendError(errMsg(err, 'Could not send the reply.'));
     } finally {

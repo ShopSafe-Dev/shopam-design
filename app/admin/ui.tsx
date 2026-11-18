@@ -12,6 +12,7 @@ export function errMsg(err: unknown, fallback = 'Something went wrong. Please tr
     const flat = Object.values(d).flat().filter((v) => typeof v === 'string');
     if (flat.length) return flat.join(' ');
   }
+  if (!(err as { response?: unknown })?.response && err instanceof Error && err.message.startsWith('Unexpected response')) return err.message;
   return fallback;
 }
 
@@ -106,3 +107,13 @@ export const PRIORITY_TONE: Record<string, 'green' | 'amber' | 'red' | 'blue' | 
   critical: 'red',
 };
 
+
+/** Accept a bare array or a DRF page ({ results: [] }); anything else is an error. */
+export function asList<T>(raw: unknown): T[] {
+  if (Array.isArray(raw)) return raw as T[];
+  if (raw && typeof raw === 'object') {
+    const r = (raw as { results?: unknown; data?: unknown }).results ?? (raw as { data?: unknown }).data;
+    if (Array.isArray(r)) return r as T[];
+  }
+  throw new Error('Unexpected response from the server (expected a list).');
+}

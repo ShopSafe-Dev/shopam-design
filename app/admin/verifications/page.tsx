@@ -5,7 +5,7 @@ import { Loader2 } from 'lucide-react';
 import { staffApi } from '@/lib/api/endpoints/staff';
 import type * as S from '@/lib/api/openapi-types';
 import Modal from '@/app/components/ui/Modal';
-import { Badge, Card, Empty, ErrorBox, PageHeader, Spinner, btn, errMsg, inputCls } from '../ui';
+import { asList, Badge, Card, Empty, ErrorBox, PageHeader, Spinner, btn, errMsg, inputCls } from '../ui';
 
 type VType = 'all' | 'cac' | 'tin' | 'address' | 'bank';
 const TYPES: VType[] = ['all', 'cac', 'tin', 'address', 'bank'];
@@ -45,7 +45,7 @@ export default function VerificationsPage() {
     setLoading(true);
     setError('');
     try {
-      setItems(await staffApi.verifyVendorList(type === 'all' ? undefined : { type }));
+      setItems(asList<S.VendorVerification>(await staffApi.verifyVendorList(type === 'all' ? undefined : { type })));
     } catch (err) {
       setError(errMsg(err, 'Could not load verification requests.'));
     } finally {

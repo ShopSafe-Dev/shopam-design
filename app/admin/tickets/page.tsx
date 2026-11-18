@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { staffApi } from '@/lib/api/endpoints/staff';
 import type * as S from '@/lib/api/openapi-types';
-import { Badge, Card, Empty, ErrorBox, PageHeader, PRIORITY_TONE, Spinner, STATUS_TONE, errMsg, fmtDate, inputCls } from '../ui';
+import { asList, Badge, Card, Empty, ErrorBox, PageHeader, PRIORITY_TONE, Spinner, STATUS_TONE, errMsg, fmtDate, inputCls } from '../ui';
 
 const FILTERS = ['all', 'open', 'pending', 'resolved', 'rejected', 'closed'] as const;
 
@@ -19,7 +19,7 @@ export default function AdminTicketsPage() {
     setLoading(true);
     setError('');
     try {
-      setTickets(await staffApi.ticketsList());
+      setTickets(asList<S.SupportTicketList>(await staffApi.ticketsList()));
     } catch (err) {
       setError(errMsg(err, 'Could not load tickets.'));
     } finally {
