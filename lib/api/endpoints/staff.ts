@@ -46,7 +46,7 @@ export const staffApi = {
 
   /** GET /staff/verify-vendor/ - Get Pending Verifications */
   verifyVendorList: async (query?: { type?: "address" | "bank" | "cac" | "tin"; verif_id?: string }): Promise<S.VendorVerification[]> =>
-    (await apiClient.get<S.VendorVerification[]>(`/staff/verify-vendor/`, { params: query })).data,
+    (await apiClient.get<S.VendorVerification[]>(`staff/get-verification/`, { params: query })).data,
 
   /** POST /staff/verify-vendor/ - Process a Verification Request */
   verifyVendorCreate: async (query: { verif_id: string }, body?: {
