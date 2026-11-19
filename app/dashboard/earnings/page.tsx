@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight, ArrowUpRight } from 'lucide-react';
+import { ArrowRight, Zap } from 'lucide-react';
 import { money } from '@/lib/order-steps';
 import BalanceCard from '../components/BalanceCard';
 import { TRANSACTIONS } from './data';
@@ -11,11 +11,18 @@ export default function EarningsPage() {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-black tracking-tight text-ink">Earnings</h2>
-        <p className="mt-1 text-sm text-slate-600">Your balance, payouts and transactions.</p>
+        <p className="mt-1 text-sm text-slate-600">Your balance and transactions.</p>
       </div>
 
       {/* Balance card */}
       <BalanceCard />
+
+      <div className="flex items-start gap-3 rounded-2xl border border-slate-200/80 bg-white px-4 py-3.5">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#FA3728]/10 text-[#FA3728]"><Zap size={15} /></span>
+        <p className="text-xs leading-relaxed text-slate-600">
+          <span className="font-bold text-ink">Payouts are automatic.</span> When an order is completed, your earnings are settled to your bank account. There is nothing to withdraw.
+        </p>
+      </div>
 
       {/* Transaction preview */}
       <section>
@@ -40,13 +47,6 @@ export default function EarningsPage() {
         </div>
       </section>
 
-      {/* Withdraw */}
-      <Link
-        href="/dashboard/earnings/withdraw"
-        className="flex w-full items-center justify-center gap-2 rounded-full bg-[#FA3728] py-4 text-sm font-bold text-white transition-colors hover:bg-[#E31B23]"
-      >
-        <ArrowUpRight size={17} /> Withdraw funds
-      </Link>
     </div>
   );
 }

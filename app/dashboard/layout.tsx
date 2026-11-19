@@ -82,7 +82,7 @@ export default function VendorDashboardLayout({ children }: { children: React.Re
           </div>
 
           <div className="relative flex items-center gap-1.5">
-            <div className="mr-1 hidden sm:block"><ModeSwitch /></div>
+            <div className="mr-1 md:hidden"><ModeSwitch compact /></div>
             <button
               onClick={() => setNotifOpen((v) => !v)}
               aria-label="Notifications"

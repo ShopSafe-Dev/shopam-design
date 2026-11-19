@@ -81,6 +81,15 @@ export interface VendorProfile {
   cac_verified?: boolean;
   tin_verified?: boolean;
   address_verified?: boolean;
+  logo?: string | null;
+  /** Per type: { status: 'pending'|'approved'|'rejected', reason?, id? }. A missing type means not submitted. */
+  verification_status?: Partial<Record<'cac' | 'tin' | 'address' | 'bank', VerificationInfo>>;
+}
+
+export interface VerificationInfo {
+  id?: string;
+  status: 'pending' | 'approved' | 'verified' | 'rejected' | string;
+  reason?: string | null;
 }
 
 export interface FullProfile {

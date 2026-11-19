@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { LogOut } from 'lucide-react';
 import { authService } from '@/lib/api';
 import { NAV_ITEMS } from '../nav';
+import ModeSwitch from '@/app/components/ModeSwitch';
 import ShopSafeLogo from '@/app/components/ui/ShopSafeLogo';
 
 export default function Sidebar() {
@@ -42,6 +43,8 @@ export default function Sidebar() {
           );
         })}
       </nav>
+
+      <div className="px-3 pb-3"><ModeSwitch /></div>
 
       <div className="border-t border-slate-100 p-3">
         <button

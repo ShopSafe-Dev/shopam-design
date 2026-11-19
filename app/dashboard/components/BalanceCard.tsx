@@ -19,7 +19,7 @@ export default function BalanceCard() {
           <p className="mt-0.5 text-lg font-bold">{money(BALANCE.available)}</p>
         </div>
         <div>
-          <p className="text-[11px] text-white/60">Pending payout</p>
+          <p className="text-[11px] text-white/60">Awaiting settlement</p>
           <p className="mt-0.5 text-lg font-bold">{money(BALANCE.pending)}</p>
         </div>
       </div>

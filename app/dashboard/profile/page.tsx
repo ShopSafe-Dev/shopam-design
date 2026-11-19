@@ -2,9 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { Camera, ImagePlus, Loader2, MapPin, Package, Plus, X } from 'lucide-react';
+import { ImagePlus, Loader2, MapPin, Package, Plus, X } from 'lucide-react';
 import Link from 'next/link';
-import { authService, postsService, productsService } from '@/lib/api';
+import { postsService, productsService } from '@/lib/api';
+import { useVendorProfile } from '@/lib/vendor/useVendorProfile';
+import BusinessCover from '@/app/components/BusinessCover';
 import type { ProductService } from '@/lib/api';
 import ProductCard from '@/app/explore/components/ProductCard';
 import PostCard from '@/app/components/feed/PostCard';
@@ -15,53 +17,65 @@ import { FEED_POSTS, type FeedPost } from '@/app/components/feed/data';
 type Tab = 'products' | 'posts';
 
 export default function VendorProfilePage() {
-  const [profile, setProfile] = useState({ name: 'Your Shop', bio: '', category: '', location: '' });
+  const { vendor, loading: profileLoading, error: profileError, reload } = useVendorProfile();
+  const profile = {
+    name: vendor?.name ?? '',
+    bio: vendor?.bio ?? '',
+    category: vendor?.category ?? '',
+    location: vendor?.address ?? '',
+    logo: vendor?.logo ?? null,
+    cacVerified: !!vendor?.cacVerified,
+  };
   const [products, setProducts] = useState<ProductService[]>([]);
   const [posts, setPosts] = useState<FeedPost[]>(FEED_POSTS.slice(0, 3));
   const [tab, setTab] = useState<Tab>('products');
   const [postOpen, setPostOpen] = useState(false);
 
   useEffect(() => {
-    const user = authService.getCurrentUser();
-    setProfile((p) => ({ ...p, name: user?.first_name || user?.username || 'Your Shop' }));
-
-    authService
-      .getFullProfile()
-      .then((full) => {
-        const vp = full?.vendor_profile;
-        setProfile({
-          name: vp?.business_name || '',
-          bio: vp?.bio || '',
-          category: vp?.business_category || '',
-          location: vp?.business_address || '',
-        });
-      })
-      .catch(() => {});
-
     productsService.getMyProducts().then((r) => setProducts(Array.isArray(r) ? r : [])).catch(() => {});
   }, []);
 
   return (
     <div className="space-y-6">
-      {/* Cover + identity (read-only; editing lives in Settings) */}
-      <div className="overflow-hidden rounded-3xl border border-slate-200/80 bg-white">
-        <div className="h-32 bg-gradient-to-br from-red-50 via-orange-50 to-amber-50 sm:h-40" />
-        <div className="relative px-4 pb-4 sm:px-6">
-          <div className="-mt-10 flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-ink text-2xl font-black text-white shadow-md sm:h-24 sm:w-24">
-            {(profile.name || 'S').charAt(0).toUpperCase()}
-          </div>
-          <div className="mt-3 flex items-center gap-2">
-            <h2 className="font-bricolage text-2xl font-black tracking-tight text-ink">{profile.name || 'Your Shop'}</h2>
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-trust text-[10px] font-bold text-white">✓</span>
-          </div>
-          {(profile.category || profile.location) && (
-            <p className="mt-1 flex items-center gap-1.5 text-sm text-slate-600">
-              <MapPin size={14} /> {[profile.category, profile.location].filter(Boolean).join(' • ')}
-            </p>
-          )}
-          {profile.bio && <p className="mt-2 max-w-xl text-sm leading-relaxed text-slate-600">{profile.bio}</p>}
+      {/* Cover + identity: everything here comes from the vendor profile (edit it in Settings) */}
+      {profileError ? (
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+          {profileError}
+          <button onClick={reload} className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-red-600 ring-1 ring-red-200">Retry</button>
         </div>
-      </div>
+      ) : (
+        <div className="overflow-hidden rounded-3xl border border-slate-200/80 bg-white">
+          {profileLoading ? (
+            <div className="h-36 animate-pulse bg-slate-100 sm:h-48" />
+          ) : (
+            <BusinessCover name={profile.name} className="h-36 sm:h-48" />
+          )}
+          <div className="relative px-4 pb-4 sm:px-6">
+            <div className="-mt-10 flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border-4 border-white bg-ink text-2xl font-black text-white shadow-md sm:h-24 sm:w-24">
+              {profile.logo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={profile.logo} alt={`${profile.name} logo`} className="h-full w-full object-cover" />
+              ) : (
+                (profile.name || ' ').charAt(0).toUpperCase()
+              )}
+            </div>
+            <div className="mt-3 flex items-center gap-2">
+              {profileLoading ? (
+                <div className="h-7 w-44 animate-pulse rounded bg-slate-100" />
+              ) : (
+                <h2 className="font-bricolage text-2xl font-black tracking-tight text-ink">{profile.name || 'Unnamed business'}</h2>
+              )}
+              {profile.cacVerified && <span title="CAC verified" className="flex h-5 w-5 items-center justify-center rounded-full bg-trust text-[10px] font-bold text-white">✓</span>}
+            </div>
+            {(profile.category || profile.location) && (
+              <p className="mt-1 flex items-center gap-1.5 text-sm text-slate-600">
+                <MapPin size={14} /> {[profile.category, profile.location].filter(Boolean).join(' • ')}
+              </p>
+            )}
+            {profile.bio && <p className="mt-2 max-w-xl text-sm leading-relaxed text-slate-600">{profile.bio}</p>}
+          </div>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-8 border-b border-slate-200/70">
