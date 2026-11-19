@@ -13,6 +13,7 @@ import { buildMessagesUI, type ChatMessage } from './chat-logic';
 import MessageBubble from './MessageBubble';
 import ReviewModal from './ReviewModal';
 import DisputeModal from './DisputeModal';
+import { getMode } from '@/lib/auth/mode';
 
 export default function OrderChatPage() {
   const params = useParams();
@@ -40,8 +41,9 @@ export default function OrderChatPage() {
       return;
     }
     setCurrentUserId(user.id);
-    setIsVendor(Boolean(user.is_vendor));
-    void refreshOrder(user.id, Boolean(user.is_vendor));
+    const asVendor = getMode(user) === 'vendor';
+    setIsVendor(asVendor);
+    void refreshOrder(user.id, asVendor);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderId]);
 

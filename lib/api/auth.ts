@@ -1,6 +1,7 @@
 import apiClient, { API_ENDPOINTS } from './config';
 import { DEV_AUTH_BYPASS, DEV_USER } from '../devAuth';
 import { getState, setUser, clearUser } from '../auth/session';
+import { clearMode } from '../auth/mode';
 import type {
   UserRegister,
   VendorRegister,
@@ -63,6 +64,7 @@ export const authService = {
       await apiClient.post(API_ENDPOINTS.AUTH.LOGOUT);
     } finally {
       clearUser();
+      clearMode();
     }
   },
 
@@ -206,5 +208,6 @@ export const authService = {
   async deactivateAccount(): Promise<void> {
     await apiClient.delete(API_ENDPOINTS.AUTH.PROFILE_DEACTIVATE);
     clearUser();
+    clearMode();
   },
 };

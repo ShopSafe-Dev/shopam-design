@@ -9,6 +9,7 @@ import { isValidEmail } from '@/lib/validation';
 import AuthShell from '../../components/auth/AuthShell';
 import FloatingInput from '../../components/auth/FloatingInput';
 import AccountTypeDialog from '../../components/auth/AccountTypeDialog';
+import { getMode, homeFor } from '@/lib/auth/mode';
 
 function SignInForm() {
   const router = useRouter();
@@ -45,10 +46,10 @@ function SignInForm() {
         password: formData.password,
       });
 
-      const isVendor = !!response.user?.is_vendor;
+      const landing = homeFor(getMode(response.user));
       setStatus('success');
       window.setTimeout(() => {
-        router.push(returnUrl ?? (isVendor ? '/dashboard' : '/explore'));
+        router.push(returnUrl ?? landing);
       }, 900);
     } catch (err: any) {
       setStatus('idle');

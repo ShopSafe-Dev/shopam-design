@@ -13,6 +13,8 @@ import { pageTitle } from './nav';
 import Sidebar from './components/Sidebar';
 import BottomNav from './components/BottomNav';
 import NotificationsPanel from './components/NotificationsPanel';
+import { getMode, homeFor } from '@/lib/auth/mode';
+import ModeSwitch from '@/app/components/ModeSwitch';
 import ShopSafeLogo from '@/app/components/ui/ShopSafeLogo';
 
 export default function VendorDashboardLayout({ children }: { children: React.ReactNode }) {
@@ -32,12 +34,9 @@ export default function VendorDashboardLayout({ children }: { children: React.Re
         window.location.replace('/auth/signin?redirect=' + encodeURIComponent(pathname));
         return;
       }
-      if (u.is_admin === true) {
-        window.location.replace('/admin');
-        return;
-      }
-      if (u.is_vendor === false && !DEV_AUTH_BYPASS) {
-        window.location.replace('/explore');
+      const m = getMode(u);
+      if (m !== 'vendor' && !DEV_AUTH_BYPASS) {
+        window.location.replace(homeFor(m));
         return;
       }
       setAuthChecked(true);
@@ -83,6 +82,7 @@ export default function VendorDashboardLayout({ children }: { children: React.Re
           </div>
 
           <div className="relative flex items-center gap-1.5">
+            <div className="mr-1 hidden sm:block"><ModeSwitch /></div>
             <button
               onClick={() => setNotifOpen((v) => !v)}
               aria-label="Notifications"

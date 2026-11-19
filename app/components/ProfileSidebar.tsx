@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { authService } from '@/lib/api';
 import type { UserProfile } from '@/lib/api';
+import { canSwitchMode, getMode } from '@/lib/auth/mode';
+import ModeSwitch from './ModeSwitch';
 
 interface ProfileSidebarProps {
   isOpen: boolean;
@@ -135,7 +137,10 @@ export default function ProfileSidebar({ isOpen, onClose }: ProfileSidebarProps)
                   <Item icon={User} title="Profile" subtitle="Your account and activity" href="/profile" onClick={onClose} />
                   <Item icon={Settings} title="Settings" subtitle="Profile, password and notifications" href="/profile/settings" onClick={onClose} />
                   <Item icon={Bell} title="Notifications" subtitle="Order and message updates" href="/notifications" onClick={onClose} />
-                  {user.is_vendor && (
+                  {canSwitchMode(user) && (
+                    <div className="px-4 py-3"><ModeSwitch onSwitched={onClose} /></div>
+                  )}
+                  {getMode(user) === 'vendor' && (
                     <Item icon={LayoutDashboard} title="Vendor dashboard" subtitle="Manage your shop" href="/dashboard" onClick={onClose} />
                   )}
                   <Item icon={LogOut} title="Sign out" onClick={handleLogout} danger />
