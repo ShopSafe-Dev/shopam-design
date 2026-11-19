@@ -26,6 +26,11 @@ function apiError(err: unknown, fallback: string): string {
   return fallback;
 }
 
+function statusOf(err: unknown): string {
+  const status = (err as { response?: { status?: number } })?.response?.status;
+  return status ? ` (HTTP ${status})` : '';
+}
+
 function pickId(res: unknown): string | null {
   const r = (res ?? {}) as Record<string, unknown>;
   const nested = (typeof r.verification === 'object' ? r.verification : r.data) as Record<string, unknown> | undefined;
@@ -94,6 +99,8 @@ function VerifyRow({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
+  // Needed to (re)attach a document later: from this submit, or from the profile after a reload.
+  const [verificationId, setVerificationId] = useState<string | null>(info?.id ?? null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Server state wins. Pending and approved lock the section; rejected and missing stay editable.
@@ -114,6 +121,28 @@ function VerifyRow({
     setFile(f);
   };
 
+  /** POST /api/accounts/vendor/documents. The server accepts more files while the section is pending. */
+  const sendDocument = async (id: string, f: File) => {
+    try {
+      await accountsApi.vendorDocumentsCreate({ verification: id, files: [f] });
+      setFile(null);
+      setNote('Document uploaded.');
+    } catch (e) {
+      setNote(`The document did not upload: ${apiError(e, 'upload failed')}${statusOf(e)}. Use "Upload document" to try again.`);
+    }
+  };
+
+  /** Retry from the locked row, without re-submitting the details. */
+  const retryUpload = async (f: File | undefined) => {
+    if (fileRef.current) fileRef.current.value = '';
+    if (!f || !verificationId) return;
+    if (f.size > MAX_DOC_BYTES) return setNote('That file is over 10 MB.');
+    setBusy(true);
+    setNote('');
+    await sendDocument(verificationId, f);
+    setBusy(false);
+  };
+
   const submit = async () => {
     setError('');
     setNote('');
@@ -126,17 +155,11 @@ function VerifyRow({
         kind === 'cac' ? { verification_type: kind, cac_number: v } : kind === 'tin' ? { verification_type: kind, tin_number: v } : { verification_type: kind, address: v };
       const res = await accountsApi.submitVerificationCreate(body);
       setSubmitted(true); // the server locks this section as soon as the submit succeeds
+      const id = pickId(res) ?? verificationId;
+      setVerificationId(id);
       if (withDocument && file) {
-        const id = pickId(res);
-        if (!id) {
-          setNote('Submitted. The server did not return a verification id, so the document could not be attached. Contact support.');
-        } else {
-          try {
-            await accountsApi.vendorDocumentsCreate({ verification: id, files: [file] });
-          } catch (e) {
-            setNote(`Submitted, but the document did not upload: ${apiError(e, 'upload failed')}`);
-          }
-        }
+        if (id) await sendDocument(id, file);
+        else setNote('Submitted, but the server did not return a verification id. Reload this page, then use "Upload document".');
       }
     } catch (err) {
       const msg = apiError(err, 'Could not submit. Try again.');
@@ -158,6 +181,20 @@ function VerifyRow({
           </div>
           <StatusBadge state={state} />
         </div>
+        {withDocument && state === 'pending' && (
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              disabled={busy || !verificationId}
+              onClick={() => fileRef.current?.click()}
+              className="flex shrink-0 items-center gap-1.5 rounded-full border border-slate-200 px-3.5 py-2 text-[13px] font-semibold text-ink transition-colors hover:border-ink disabled:opacity-60"
+            >
+              {busy ? <Loader2 size={13} className="animate-spin" /> : <FileText size={13} />} Upload document
+            </button>
+            <input ref={fileRef} type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" className="hidden" onChange={(e) => void retryUpload(e.target.files?.[0])} />
+            <span className="text-[11px] text-slate-500">{verificationId ? 'PDF, PNG or JPG, up to 10 MB, 3 files max.' : 'Reload this page to attach a document.'}</span>
+          </div>
+        )}
         {note && <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">{note}</p>}
       </div>
     );
