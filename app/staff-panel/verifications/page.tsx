@@ -5,6 +5,7 @@ import { Loader2 } from 'lucide-react';
 import { staffApi } from '@/lib/api/endpoints/staff';
 import type * as S from '@/lib/api/openapi-types';
 import Modal from '@/app/components/ui/Modal';
+import DocumentPreview from '../DocumentPreview';
 import { asList, Badge, Card, Empty, ErrorBox, PageHeader, Spinner, btn, errMsg, inputCls } from '../ui';
 
 type VType = 'all' | 'cac' | 'tin' | 'address' | 'bank';
@@ -17,13 +18,6 @@ const FIELDS: [keyof S.VendorVerification, string][] = [
   ['bank_account', 'Bank account'],
   ['bank_code', 'Bank code'],
 ];
-
-/** Document objects are untyped in the spec: link whichever URL-like key is present. */
-function docLink(d: Record<string, unknown>): { href?: string; label: string } {
-  const href = ['signed_url', 'url', 'file', 'document', 'link'].map((k) => d[k]).find((v) => typeof v === 'string') as string | undefined;
-  const label = (['filename', 'name', 'original_name'].map((k) => d[k]).find((v) => typeof v === 'string') as string) || 'Document';
-  return { href, label };
-}
 
 function vendorLabel(v: Record<string, unknown> | undefined): string {
   if (!v) return 'Unknown vendor';
@@ -124,20 +118,7 @@ export default function VerificationsPage() {
                 ))}
               </dl>
 
-              {v.documents?.length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {v.documents.map((d, i) => {
-                    const { href, label } = docLink(d as Record<string, unknown>);
-                    return href ? (
-                      <a key={i} href={href} target="_blank" rel="noopener noreferrer" className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-ink hover:bg-slate-200">
-                        {label}
-                      </a>
-                    ) : (
-                      <span key={i} className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs text-slate-500">{label}</span>
-                    );
-                  })}
-                </div>
-              )}
+              <DocumentPreview docs={(v.documents ?? []) as Record<string, unknown>[]} />
             </Card>
           ))}
         </div>
