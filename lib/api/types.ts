@@ -145,6 +145,7 @@ export interface ProductServiceCreate {
   stock?: number; // local UI only — not persisted to backend
   taxonomy_id?: string; // UUID of the selected Taxonomy node
   images?: File[];
+  deleted_image_ids?: string[]; // update only
 }
 
 // Backward-compat alias
