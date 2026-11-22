@@ -7,9 +7,12 @@ import { authService } from '@/lib/api';
 import { NAV_ITEMS } from '../nav';
 import ModeSwitch from '@/app/components/ModeSwitch';
 import ShopSafeLogo from '@/app/components/ui/ShopSafeLogo';
+import UnreadBadge from '@/app/components/chat/UnreadBadge';
+import { useUnreadTotal } from '@/lib/chat/hooks';
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const unread = useUnreadTotal();
 
   const signOut = () => {
     authService.logout().finally(() => {
@@ -39,6 +42,7 @@ export default function Sidebar() {
             >
               <Icon size={17} />
               {item.label}
+              {item.href === '/dashboard/messages' && <UnreadBadge count={unread} className="ml-auto" />}
             </Link>
           );
         })}

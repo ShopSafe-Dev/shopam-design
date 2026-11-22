@@ -38,6 +38,8 @@ export interface ConversationMessage {
 
 export interface UIOrder {
   id: string;
+  /** Buyer's USER id: the chat recipient. */
+  customerId: string;
   name: string;
   item: string;
   items: UIOrderItem[];
@@ -93,8 +95,8 @@ export function transformOrder(order: APIOrder): UIOrder {
   const extra = order as unknown as { rejection_reason?: string; dispute_reason?: string };
   const colorIndex = order.customer.charCodeAt(0) % AVATAR_COLORS.length;
   const shortId = order.customer.substring(0, 8).toUpperCase();
-  const buyerName = `Buyer #${shortId}`;
-  const avatar = shortId.substring(0, 2);
+  const buyerName = order.customer_name || `Buyer #${shortId}`;
+  const avatar = (order.customer_name || shortId).substring(0, 2).toUpperCase();
   const time = new Date(order.created_at).toLocaleTimeString('en-NG', {
     hour: '2-digit', minute: '2-digit',
   });
@@ -173,6 +175,7 @@ export function transformOrder(order: APIOrder): UIOrder {
 
   return {
     id: order.id,
+    customerId: order.customer,
     name: buyerName,
     item: itemSummary,
     items,

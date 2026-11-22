@@ -80,6 +80,12 @@ const under = (p: string, base: string) => p === base || p.startsWith(base + '/'
 export function redirectFor(pathname: string, mode: Mode | null): string | null {
   if (!mode || pathname === '/' || OPEN.some((b) => under(pathname, b))) return null;
   if (mode === 'staff') return '/staff-panel';
+  // Customer chat lives under /chats, vendor chat under /dashboard/messages. They never share a window.
+  if (mode === 'vendor' && under(pathname, '/chats')) {
+    const m = pathname.match(/^\/chats\/with\/([^/]+)/);
+    if (m) return `/dashboard/messages/${m[1]}`;
+    return pathname === '/chats' ? '/dashboard/messages' : '/dashboard/orders';
+  }
   if (mode === 'customer' && VENDOR_ONLY.some((b) => under(pathname, b))) return '/explore';
   if (mode === 'vendor' && CUSTOMER_ONLY.some((b) => under(pathname, b))) return '/dashboard';
   return null;

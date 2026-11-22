@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Search, Loader2 } from 'lucide-react';
-import { ordersService } from '@/lib/api/services';
+import { ordersService, messagesService } from '@/lib/api/services';
 import { transformOrder, type UIOrder, type UIOrderStatus, type ConversationMessage } from './order-transform';
 import OrderConversation from './OrderConversation';
 import ModifyOrderModal, { type ModifyChanges } from './ModifyOrderModal';
@@ -79,17 +79,26 @@ export default function OrdersPage() {
     setRejectTarget(null);
   };
 
-  const handleSendMessage = () => {
-    if (!messageInput.trim() || !selectedOrder) return;
+  // Previously this only appended to local state and never reached the buyer. It now sends for real.
+  const handleSendMessage = async () => {
+    const content = messageInput.trim();
+    if (!content || !selectedOrder) return;
     const message: ConversationMessage = {
       id: `m${Date.now()}`,
       type: 'text',
       timestamp: new Date().toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' }),
-      content: messageInput.trim(),
+      content,
       fromBuyer: false,
     };
-    setSelectedOrder((prev) => (prev ? { ...prev, messages: [...prev.messages, message] } : prev));
+    setConvError('');
     setMessageInput('');
+    try {
+      await messagesService.sendMessage({ recipient: selectedOrder.customerId, content });
+      setSelectedOrder((prev) => (prev ? { ...prev, messages: [...prev.messages, message] } : prev));
+    } catch {
+      setMessageInput(content);
+      setConvError('Message not sent. Please try again.');
+    }
   };
 
   const filteredOrders = activeTab === 'All' ? orders : orders.filter((o) => o.status === activeTab);

@@ -8,6 +8,10 @@ import { ordersService, authService } from '@/lib/api';
 import type { Order } from '@/lib/api';
 import AppBar from '@/app/components/ui/AppBar';
 import BottomNav from '@/app/components/BottomNav';
+import ConversationList from '@/app/components/chat/ConversationList';
+import UnreadBadge from '@/app/components/chat/UnreadBadge';
+import { useConversations } from '@/lib/chat/hooks';
+import { useUser } from '@/lib/auth/useUser';
 
 function statusLabel(order: Order): string {
   switch (order.status) {
@@ -36,6 +40,13 @@ export default function ChatsListPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [tab, setTab] = useState<'orders' | 'messages'>('orders');
+  const inbox = useConversations();
+  const { user } = useUser();
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('tab') === 'messages') setTab('messages');
+  }, []);
 
   useEffect(() => {
     authService.ensureUser().then((user) => {
@@ -61,7 +72,37 @@ export default function ChatsListPage() {
       <AppBar title="Chats" showBack={false} />
 
       <div className="mx-auto max-w-2xl px-4 py-5 sm:px-6">
-        {isAuthenticated === false ? (
+        {isAuthenticated && (
+          <div role="tablist" className="mb-5 grid grid-cols-2 gap-1 rounded-full bg-slate-200/60 p-1">
+            {([['orders', 'Orders'], ['messages', 'Messages']] as const).map(([key, label]) => (
+              <button
+                key={key}
+                role="tab"
+                aria-selected={tab === key}
+                onClick={() => setTab(key)}
+                className={`flex items-center justify-center gap-2 rounded-full py-2 text-sm font-bold transition-colors ${
+                  tab === key ? 'bg-white text-ink shadow-sm' : 'text-slate-600'
+                }`}
+              >
+                {label}
+                {key === 'messages' && <UnreadBadge count={inbox.unreadTotal} />}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {isAuthenticated && tab === 'messages' ? (
+          <ConversationList
+            rows={inbox.list}
+            meId={user?.id ?? null}
+            loading={inbox.loading}
+            error={inbox.error}
+            onRetry={inbox.reload}
+            hrefFor={(c) => `/chats/with/${c.userId}?name=${encodeURIComponent(c.name)}`}
+            emptyTitle="No messages yet"
+            emptyText="Message a seller from their profile or an order and the conversation shows up here."
+          />
+        ) : isAuthenticated === false ? (
           <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-14 text-center">
             <span className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-500">
               <ShoppingBag size={24} />

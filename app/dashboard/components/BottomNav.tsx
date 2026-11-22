@@ -4,17 +4,20 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Home, Package, ShoppingBag, User, MoreHorizontal, Wallet, Settings, LogOut, X } from 'lucide-react';
+import { Home, Package, ShoppingBag, User, MoreHorizontal, Wallet, Settings, LogOut, X, MessageCircle } from 'lucide-react';
 import { authService } from '@/lib/api';
+import UnreadBadge from '@/app/components/chat/UnreadBadge';
+import { useUnreadTotal } from '@/lib/chat/hooks';
 
 const PRIMARY = [
   { href: '/dashboard', label: 'Home', icon: Home },
   { href: '/dashboard/products', label: 'Products', icon: Package },
   { href: '/dashboard/orders', label: 'Orders', icon: ShoppingBag },
-  { href: '/dashboard/profile', label: 'Profile', icon: User },
+  { href: '/dashboard/messages', label: 'Messages', icon: MessageCircle },
 ];
 
 const MORE = [
+  { href: '/dashboard/profile', label: 'Profile', icon: User },
   { href: '/dashboard/earnings', label: 'Earnings', icon: Wallet },
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ];
@@ -22,6 +25,7 @@ const MORE = [
 export default function BottomNav() {
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
+  const unread = useUnreadTotal();
 
   const signOut = () => {
     authService.logout().finally(() => {
@@ -41,7 +45,10 @@ export default function BottomNav() {
             const Icon = item.icon;
             return (
               <Link key={item.href} href={item.href} className="flex w-16 flex-col items-center gap-0.5 py-2">
-                <Icon size={21} className={active ? 'text-[#FA3728]' : 'text-slate-600'} strokeWidth={active ? 2.5 : 2} />
+                <span className="relative">
+                  <Icon size={21} className={active ? 'text-[#FA3728]' : 'text-slate-600'} strokeWidth={active ? 2.5 : 2} />
+                  {item.href === '/dashboard/messages' && <UnreadBadge count={unread} className="absolute -right-2 -top-1.5" />}
+                </span>
                 <span className={`text-[10px] ${active ? 'font-bold text-[#FA3728]' : 'font-medium text-slate-600'}`}>{item.label}</span>
               </Link>
             );

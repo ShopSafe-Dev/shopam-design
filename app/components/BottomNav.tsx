@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, Compass, ShoppingCart, MessageCircle, User } from 'lucide-react';
+import UnreadBadge from './chat/UnreadBadge';
+import { useUnreadTotal } from '@/lib/chat/hooks';
 
 const TABS = [
   { href: '/', label: 'Home', icon: Home },
@@ -15,6 +17,7 @@ const TABS = [
 /** Shared mobile bottom navigation for the customer-facing app. */
 export default function BottomNav() {
   const pathname = usePathname();
+  const unread = useUnreadTotal();
   const isActive = (href: string) =>
     href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`);
 
@@ -26,11 +29,14 @@ export default function BottomNav() {
           const Icon = tab.icon;
           return (
             <Link key={tab.href} href={tab.href} className="flex w-16 flex-col items-center gap-0.5 py-2">
-              <Icon
-                size={21}
-                className={active ? 'text-[#FA3728]' : 'text-slate-500'}
-                strokeWidth={active ? 2.5 : 2}
-              />
+              <span className="relative">
+                <Icon
+                  size={21}
+                  className={active ? 'text-[#FA3728]' : 'text-slate-500'}
+                  strokeWidth={active ? 2.5 : 2}
+                />
+                {tab.href === '/chats' && <UnreadBadge count={unread} className="absolute -right-2 -top-1.5" />}
+              </span>
               <span className={`text-[10px] ${active ? 'font-bold text-[#FA3728]' : 'font-medium text-slate-500'}`}>
                 {tab.label}
               </span>

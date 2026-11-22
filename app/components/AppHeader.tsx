@@ -4,11 +4,14 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { ShoppingCart } from 'lucide-react';
+import { MessageCircle, ShoppingCart } from 'lucide-react';
 import { cartService } from '@/lib/api';
 import ProfileButton from './ProfileButton';
 import NotificationsBell from './NotificationsBell';
 import ShopSafeLogo from './ui/ShopSafeLogo';
+import UnreadBadge from './chat/UnreadBadge';
+import { useUnreadTotal } from '@/lib/chat/hooks';
+import { useMode } from '@/lib/auth/useMode';
 
 const TABS = [
   { href: '/explore', label: 'Products' },
@@ -29,6 +32,24 @@ function CartLink({ count }: { count: number }) {
           {count > 9 ? '9+' : count}
         </span>
       )}
+    </Link>
+  );
+}
+
+/** Chat entry. Customers go to /chats, vendors to their own inbox. Hidden for guests and staff. */
+function ChatLink() {
+  const { mode } = useMode();
+  const unread = useUnreadTotal();
+  if (mode !== 'customer' && mode !== 'vendor') return null;
+  const href = mode === 'vendor' ? '/dashboard/messages' : unread > 0 ? '/chats?tab=messages' : '/chats';
+  return (
+    <Link
+      href={href}
+      aria-label={unread > 0 ? `Messages, ${unread} unread` : 'Messages'}
+      className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-700 transition-colors hover:bg-slate-100"
+    >
+      <MessageCircle size={19} />
+      <UnreadBadge count={unread} className="absolute -right-0.5 -top-0.5" />
     </Link>
   );
 }
@@ -94,6 +115,7 @@ export default function AppHeader() {
         {/* Actions */}
         <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
           <CartLink count={cartCount} />
+          <ChatLink />
           <NotificationsBell />
           <ProfileButton />
         </div>

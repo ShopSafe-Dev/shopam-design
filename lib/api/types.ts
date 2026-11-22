@@ -241,6 +241,9 @@ export interface Order {
   customer: string;
   vendor: string;
   vendor_name: string;
+  /** The seller's USER id (chat recipient). `vendor` is the VendorProfile id. Present once the backend serializer is deployed. */
+  vendor_user_id?: string;
+  customer_name?: string;
   status: OrderStatus;
   shipping_type: ShippingType | null;
   shipping_address: string | null;

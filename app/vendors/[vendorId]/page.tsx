@@ -189,6 +189,9 @@ export default function VendorShopPage() {
     );
   }
 
+  // Chat needs the seller's USER id. Without it (list-only data) fall back to the inbox rather than a broken thread.
+  const chatHref = vendor.userId ? `/chats/with/${vendor.userId}?name=${encodeURIComponent(vendor.name)}` : '/chats?tab=messages';
+
   const tabs: { id: Tab; label: string; count?: number }[] = [
     { id: 'products', label: 'Products', count: products.length },
     { id: 'posts', label: 'Posts', count: posts.length },
@@ -317,7 +320,7 @@ export default function VendorShopPage() {
               {following ? 'Following' : 'Follow'}
             </button>
             <Link
-              href={`/chats/${vendor.id}`}
+              href={chatHref}
               className="inline-flex h-11 items-center gap-2 rounded-full border border-slate-200 bg-white px-6 text-sm font-bold text-ink transition-colors hover:border-ink"
             >
               <MessageCircle size={16} />
@@ -460,7 +463,7 @@ export default function VendorShopPage() {
               </dl>
 
               <Link
-                href={`/chats/${vendor.id}`}
+                href={chatHref}
                 className="mt-8 inline-flex h-11 items-center gap-2 rounded-full bg-ink px-6 text-sm font-bold text-white transition-colors hover:bg-[#FA3728]"
               >
                 <MessageCircle size={16} />
@@ -475,7 +478,7 @@ export default function VendorShopPage() {
 
       {/* Floating message button (mobile) */}
       <Link
-        href={`/chats/${vendor.id}`}
+        href={chatHref}
         aria-label={`Message ${vendor.name}`}
         className="fixed bottom-20 right-6 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-ink text-white shadow-lg transition-colors hover:bg-[#FA3728] sm:hidden"
       >

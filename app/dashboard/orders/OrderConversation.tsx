@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Send, Check, X, Truck, CheckCircle2, MoreVertical, ShoppingBag, RotateCcw } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowLeft, Send, Check, X, Truck, CheckCircle2, ShoppingBag, RotateCcw } from 'lucide-react';
 import { money, SUGGESTED_SHIPPING_FEE } from '@/lib/order-steps';
 import type { UIOrder, ConversationMessage } from './order-transform';
 
@@ -103,9 +104,12 @@ export default function OrderConversation({
           <p className="truncate text-sm font-semibold leading-tight text-ink">{order.name}</p>
           <p className="text-xs text-slate-500">Buyer</p>
         </div>
-        <button className="p-1 text-slate-500">
-          <MoreVertical size={20} />
-        </button>
+        <Link
+          href={`/dashboard/messages/${order.customerId}?name=${encodeURIComponent(order.name)}`}
+          className="rounded-full bg-slate-100 px-3 py-1.5 text-[11px] font-bold text-slate-700 hover:bg-slate-200"
+        >
+          Full chat
+        </Link>
       </div>
 
       {convError && (

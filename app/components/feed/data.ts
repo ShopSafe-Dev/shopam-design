@@ -4,6 +4,8 @@ import { timeAgo } from '@/lib/format';
 export interface FeedPost {
   id: number;
   vendorName: string;
+  /** The vendor's USER id (chat recipient). Missing on the curated fallback posts. */
+  vendorUserId?: string;
   verified: boolean;
   followers?: number;
   timeAgo: string;
@@ -31,6 +33,7 @@ export function toFeedPost(raw: any): FeedPost {
   return {
     id: Number(raw?.id) || 0,
     vendorName: name,
+    vendorUserId: typeof vendor?.id === 'string' ? vendor.id : undefined,
     verified: Boolean(vendor?.is_verified ?? vendor?.is_vendor ?? false),
     followers: undefined,
     timeAgo: raw?.created_at ? timeAgo(raw.created_at) : '',

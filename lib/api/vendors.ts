@@ -9,6 +9,8 @@ import type { PaginatedResponse } from './types';
  */
 export interface Vendor {
   id: string;
+  /** Vendor's USER id, the chat recipient. Only the single-vendor endpoint returns it; empty in list results. */
+  userId?: string;
   name: string;
   category: string;
   location: string;
@@ -44,6 +46,7 @@ export function normalizeVendor(raw: any): Vendor {
 
   return {
     id,
+    userId: asString(raw?.user_id) || asString(user?.id),
     name: formatVendorName(name),
     category: formatCategory(
       asString(raw?.business_category_display) || asString(raw?.business_category) || asString(raw?.category)

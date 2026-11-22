@@ -4,16 +4,18 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Info, Loader2, RefreshCcw, Send, ShieldCheck } from 'lucide-react';
-import { authService, messagesService, ordersService, reviewsService } from '@/lib/api';
+import { ArrowLeft, Info, Loader2, RefreshCcw } from 'lucide-react';
+import { authService, ordersService, reviewsService } from '@/lib/api';
 import type { Order } from '@/lib/api';
 import { statusLabel } from '@/lib/order-steps';
 import OrderProgress from '@/app/components/OrderProgress';
-import { buildMessagesUI, type ChatMessage } from './chat-logic';
+import { buildMessagesUI } from './chat-logic';
 import MessageBubble from './MessageBubble';
 import ReviewModal from './ReviewModal';
 import DisputeModal from './DisputeModal';
-import { getMode } from '@/lib/auth/mode';
+import { useThread } from '@/lib/chat/hooks';
+import ConnectionPill from '@/app/components/chat/ConnectionPill';
+import Composer from '@/app/components/chat/Composer';
 
 export default function OrderChatPage() {
   const params = useParams();
@@ -21,10 +23,7 @@ export default function OrderChatPage() {
   const router = useRouter();
 
   const [order, setOrder] = useState<Order | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  const [isVendor, setIsVendor] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [reviewOpen, setReviewOpen] = useState(false);
@@ -33,6 +32,16 @@ export default function OrderChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  // Customer-only page (vendor mode is redirected to /dashboard/messages), so the other side is always the seller.
+  // vendor_user_id is the seller's USER id; `vendor` is the VendorProfile id and is not a valid chat recipient.
+  const sellerUserId = order ? order.vendor_user_id ?? order.vendor : '';
+  const thread = useThread(sellerUserId);
+  const messages = useMemo(
+    () => (order ? buildMessagesUI(order, thread.messages, thread.meId ?? undefined) : []),
+    [order, thread.messages, thread.meId]
+  );
+  const failedCount = thread.messages.filter((m) => m.local === 'failed').length;
+
   useEffect(() => {
     if (!orderId) return;
     const user = authService.getCurrentUser();
@@ -40,10 +49,7 @@ export default function OrderChatPage() {
       router.push(`/auth/signin?redirect=${encodeURIComponent(`/chats/${orderId}`)}`);
       return;
     }
-    setCurrentUserId(user.id);
-    const asVendor = getMode(user) === 'vendor';
-    setIsVendor(asVendor);
-    void refreshOrder(user.id, asVendor);
+    void refreshOrder();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderId]);
 
@@ -51,21 +57,11 @@ export default function OrderChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const refreshOrder = async (userId?: string, vendor: boolean = isVendor) => {
+  const refreshOrder = async () => {
     try {
       setIsLoading(true);
       setError('');
-      const fetchedOrder = await ordersService.getOrder(orderId);
-      setOrder(fetchedOrder);
-
-      const otherUserId = vendor ? fetchedOrder.customer : fetchedOrder.vendor;
-      let threads: { id: string; sender: string; content: string; created_at: string }[] = [];
-      try {
-        if (otherUserId) threads = (await messagesService.getThread(otherUserId)) as typeof threads;
-      } catch {
-        /* messages are best-effort */
-      }
-      setMessages(buildMessagesUI(fetchedOrder, threads, userId ?? currentUserId));
+      setOrder(await ordersService.getOrder(orderId));
     } catch {
       setError('We could not load this order. Please try again.');
     } finally {
@@ -73,18 +69,11 @@ export default function OrderChatPage() {
     }
   };
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newMessage.trim() || !order) return;
-    const content = newMessage.trim();
+  const handleSendMessage = () => {
+    if (!newMessage.trim() || !sellerUserId) return;
+    const content = newMessage;
     setNewMessage('');
-    try {
-      const otherUserId = isVendor ? order.customer : order.vendor;
-      await messagesService.sendMessage({ recipient: otherUserId, content });
-      await refreshOrder();
-    } catch {
-      setError('Message failed to send.');
-    }
+    void thread.send(content);
   };
 
   const handleAcceptChanges = async () => {
@@ -205,6 +194,8 @@ export default function OrderChatPage() {
         </div>
       </header>
 
+      <ConnectionPill link={thread.link} />
+
       {/* Tracking */}
       {showProgress && order && (
         <div className="flex-shrink-0 border-b border-slate-200/70 bg-white/70">
@@ -214,16 +205,16 @@ export default function OrderChatPage() {
         </div>
       )}
 
-      {/* Vendor redirect note */}
-      {isVendor && (
-        <div className="flex-shrink-0 border-b border-amber-200 bg-amber-50">
-          <div className="mx-auto flex max-w-2xl items-center gap-2 px-4 py-2.5 text-[12px] font-medium text-amber-800 sm:px-6">
-            <ShieldCheck size={14} />
-            Manage accept / modify / reject from your
-            <Link href="/dashboard/orders" className="font-bold underline">
-              dashboard orders
-            </Link>
-            .
+      {failedCount > 0 && (
+        <div className="flex-shrink-0 border-b border-red-100 bg-red-50">
+          <div className="mx-auto flex max-w-2xl items-center justify-between gap-3 px-4 py-2 text-[12px] text-red-600 sm:px-6">
+            {failedCount === 1 ? '1 message was not sent.' : `${failedCount} messages were not sent.`}
+            <button
+              onClick={() => thread.messages.filter((m) => m.local === 'failed').forEach((m) => void thread.retry(m.id))}
+              className="font-bold underline"
+            >
+              Retry
+            </button>
           </div>
         </div>
       )}
@@ -249,7 +240,7 @@ export default function OrderChatPage() {
               key={`${message.id}-${i}`}
               message={message}
               index={i}
-              isVendor={isVendor}
+              isVendor={false}
               vendorName={vendorName}
               onAcceptChanges={handleAcceptChanges}
               onRequestChanges={handleRequestChanges}
@@ -264,37 +255,7 @@ export default function OrderChatPage() {
       </main>
 
       {/* Composer */}
-      <footer className="z-20 flex-shrink-0 border-t border-slate-200/70 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl">
-        <div className="mx-auto max-w-2xl px-3 py-3 sm:px-4">
-          <form onSubmit={handleSendMessage} className="flex items-end gap-2">
-            <div className="flex-1 overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 transition-all focus-within:border-ink focus-within:bg-white">
-              <textarea
-                ref={inputRef}
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    void handleSendMessage(e);
-                  }
-                }}
-                placeholder="Type a message…"
-                rows={1}
-                className="max-h-32 w-full resize-none bg-transparent px-5 py-3 text-[15px] leading-relaxed text-ink outline-none placeholder:text-slate-400"
-                style={{ minHeight: '44px' }}
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={!newMessage.trim()}
-              aria-label="Send"
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ink text-white transition-all hover:bg-[#FA3728] active:scale-90 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <Send size={17} />
-            </button>
-          </form>
-        </div>
-      </footer>
+      <Composer value={newMessage} onChange={setNewMessage} onSend={handleSendMessage} accent="ink" inputRef={inputRef} />
 
       <AnimatePresence>
         <ReviewModal

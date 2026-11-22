@@ -168,11 +168,11 @@ export default function PostCard({ post, index = 0 }: { post: FeedPost; index?: 
 
         <div className="mt-3 border-t border-slate-100 pt-3">
           <Link
-            href={`/chats/${post.vendorName.toLowerCase().replace(/\s+/g, '-')}`}
+            href={post.vendorUserId ? `/chats/with/${post.vendorUserId}?name=${encodeURIComponent(post.vendorName)}` : vendorHref}
             className="flex w-full items-center justify-center gap-2 rounded-full bg-slate-50 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-[#FA3728] hover:text-white"
           >
             <MessageCircle size={16} />
-            Order via Chat
+            {post.vendorUserId ? 'Order via Chat' : 'View vendor'}
           </Link>
         </div>
       </div>
