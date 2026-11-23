@@ -2,7 +2,8 @@ import { timeAgo } from '@/lib/format';
 
 /** Normalized post view-model shared by the Feed and vendor shop pages. */
 export interface FeedPost {
-  id: number;
+  /** Post UUID. Curated fallback posts use ids starting with "demo-" and never call the API. */
+  id: string;
   vendorName: string;
   /** The vendor's USER id (chat recipient). Missing on the curated fallback posts. */
   vendorUserId?: string;
@@ -16,12 +17,22 @@ export interface FeedPost {
   tags: string[];
   isLiked?: boolean;
   isSaved?: boolean;
+  shares?: number;
+  /** Id of MY like on this post (to unlike). */
+  myLikeId?: string | null;
+  /** VendorProfile id, the target of follow. */
+  vendorProfileId?: string | null;
+  isFollowing?: boolean;
+  myFollowId?: string | null;
 }
+
+export const isDemoPost = (p: { id: string }) => p.id.startsWith('demo-');
 
 /** Map an API `Post` into the normalized feed view-model. */
 export function toFeedPost(raw: any): FeedPost {
   const vendor = raw?.vendor ?? {};
   const name =
+    raw?.vendor_name ||
     vendor?.business_name ||
     [vendor?.first_name, vendor?.last_name].filter(Boolean).join(' ') ||
     vendor?.username ||
@@ -31,7 +42,7 @@ export function toFeedPost(raw: any): FeedPost {
   const image = typeof first === 'string' ? first : first?.image_url || first?.url || '';
 
   return {
-    id: Number(raw?.id) || 0,
+    id: String(raw?.id ?? ''),
     vendorName: name,
     vendorUserId: typeof vendor?.id === 'string' ? vendor.id : undefined,
     verified: Boolean(vendor?.is_verified ?? vendor?.is_vendor ?? false),
@@ -44,13 +55,18 @@ export function toFeedPost(raw: any): FeedPost {
     tags: Array.isArray(raw?.tags) ? raw.tags : [],
     isLiked: Boolean(raw?.is_liked),
     isSaved: false,
+    shares: Number(raw?.shares_count) || 0,
+    myLikeId: raw?.my_like_id ?? null,
+    vendorProfileId: raw?.vendor_profile_id ?? null,
+    isFollowing: Boolean(raw?.is_following_vendor),
+    myFollowId: raw?.my_follow_id ?? null,
   };
 }
 
 /** Curated fallback posts so the feed always renders. */
 export const FEED_POSTS: FeedPost[] = [
   {
-    id: 1,
+    id: 'demo-1',
     vendorName: "Sarah's Fashion",
     verified: true,
     followers: 2340,
@@ -65,7 +81,7 @@ export const FEED_POSTS: FeedPost[] = [
     isSaved: false,
   },
   {
-    id: 2,
+    id: 'demo-2',
     vendorName: 'TechHub Nigeria',
     verified: true,
     followers: 5670,
@@ -80,7 +96,7 @@ export const FEED_POSTS: FeedPost[] = [
     isSaved: false,
   },
   {
-    id: 3,
+    id: 'demo-3',
     vendorName: 'Kiara Takeaway',
     verified: true,
     followers: 12400,
@@ -94,7 +110,7 @@ export const FEED_POSTS: FeedPost[] = [
     isSaved: true,
   },
   {
-    id: 4,
+    id: 'demo-4',
     vendorName: 'Book Zone',
     verified: false,
     followers: 890,

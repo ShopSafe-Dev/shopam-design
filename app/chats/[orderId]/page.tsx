@@ -14,9 +14,9 @@ import { buildMessagesUI } from './chat-logic';
 import MessageBubble from './MessageBubble';
 import ReviewModal from './ReviewModal';
 import DisputeModal from './DisputeModal';
-import { useThread } from '@/lib/chat/hooks';
-import ConnectionPill from '@/app/components/chat/ConnectionPill';
-import Composer from '@/app/components/chat/Composer';
+import { MessageCircle } from 'lucide-react';
+import { useUnreadForOrder } from '@/lib/chat/hooks';
+import UnreadBadge from '@/app/components/chat/UnreadBadge';
 
 export default function OrderChatPage() {
   const params = useParams();
@@ -24,24 +24,15 @@ export default function OrderChatPage() {
   const router = useRouter();
 
   const [order, setOrder] = useState<Order | null>(null);
-  const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [reviewOpen, setReviewOpen] = useState(false);
   const [disputeOpen, setDisputeOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Customer-only page (vendor mode is redirected to /dashboard/messages), so the other side is always the seller.
-  // vendor_user_id is the seller's USER id; `vendor` is the VendorProfile id and is not a valid chat recipient.
-  const sellerUserId = order ? order.vendor_user_id ?? order.vendor : '';
-  const thread = useThread({ order: orderId, other: sellerUserId || null });
-  const messages = useMemo(
-    // System messages repeat what the order cards already show, so only people's own text goes in the bubbles.
-    () => (order ? buildMessagesUI(order, thread.messages.filter((m) => !m.is_system), thread.meId ?? undefined) : []),
-    [order, thread.messages, thread.meId]
-  );
-  const failedCount = thread.messages.filter((m) => m.local === 'failed').length;
+  // This page is the ORDER only (status, steps, actions). Talking to the seller is a separate window: /chats/<id>/messages.
+  const messages = useMemo(() => (order ? buildMessagesUI(order, [], undefined) : []), [order]);
+  const unreadChat = useUnreadForOrder(orderId);
 
   useEffect(() => {
     if (!orderId) return;
@@ -70,13 +61,6 @@ export default function OrderChatPage() {
     }
   };
 
-  const handleSendMessage = () => {
-    if (!newMessage.trim() || !sellerUserId) return;
-    const content = newMessage;
-    setNewMessage('');
-    void thread.send(content);
-  };
-
   // A 409 means the order moved on (or never reached this step): show why and resync instead of a generic error.
   const failWith = async (e: unknown, fallback: string) => {
     const err = e as { response?: { status?: number; data?: { error?: string } } };
@@ -94,8 +78,7 @@ export default function OrderChatPage() {
   };
 
   const handleRequestChanges = () => {
-    setNewMessage('Could you please adjust: ');
-    inputRef.current?.focus();
+    router.push(`/chats/${orderId}/messages`);
   };
 
   // Add delivery details and pay both live on the checkout page, which enforces the same step order.
@@ -190,8 +173,6 @@ export default function OrderChatPage() {
         </div>
       </header>
 
-      <ConnectionPill link={thread.link} />
-
       {/* Tracking */}
       {showProgress && order && (
         <div className="flex-shrink-0 border-b border-slate-200/70 bg-white/70">
@@ -205,20 +186,6 @@ export default function OrderChatPage() {
         <div className="flex-shrink-0 border-b border-slate-200/70 bg-white/70">
           <div className="mx-auto max-w-2xl px-4 py-3 sm:px-6">
             <OrderSteps workflow={order.workflow} />
-          </div>
-        </div>
-      )}
-
-      {failedCount > 0 && (
-        <div className="flex-shrink-0 border-b border-red-100 bg-red-50">
-          <div className="mx-auto flex max-w-2xl items-center justify-between gap-3 px-4 py-2 text-[12px] text-red-600 sm:px-6">
-            {failedCount === 1 ? '1 message was not sent.' : `${failedCount} messages were not sent.`}
-            <button
-              onClick={() => thread.messages.filter((m) => m.local === 'failed').forEach((m) => void thread.retry(m.id))}
-              className="font-bold underline"
-            >
-              Retry
-            </button>
           </div>
         </div>
       )}
@@ -258,8 +225,17 @@ export default function OrderChatPage() {
         </div>
       </main>
 
-      {/* Composer */}
-      <Composer value={newMessage} onChange={setNewMessage} onSend={handleSendMessage} accent="ink" inputRef={inputRef} />
+      <div className="flex-shrink-0 border-t border-slate-200/70 bg-white pb-[max(env(safe-area-inset-bottom),12px)]">
+        <div className="mx-auto max-w-2xl px-4 py-3 sm:px-6">
+          <Link
+            href={`/chats/${orderId}/messages`}
+            className="flex w-full items-center justify-center gap-2 rounded-full border border-slate-200 bg-white py-3 text-sm font-bold text-ink transition-colors hover:border-ink"
+          >
+            <MessageCircle size={16} /> Message the seller about this order
+            <UnreadBadge count={unreadChat} />
+          </Link>
+        </div>
+      </div>
 
       <AnimatePresence>
         <ReviewModal

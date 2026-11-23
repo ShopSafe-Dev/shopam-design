@@ -58,6 +58,12 @@ export function useUnreadTotal(): number {
   return unreadTotal(useChatRuntime());
 }
 
+/** Unread count for one order's chat (nav badge on the order page). */
+export function useUnreadForOrder(orderId: string): number {
+  const s = useChatRuntime();
+  return s.threads[`order:${orderId}`]?.unread ?? 0;
+}
+
 /** One chat: an order's own stream (`{order}`) or the general stream with a person (`{other}`). */
 export function useThread(ref: ThreadRef) {
   const s = useChatRuntime();

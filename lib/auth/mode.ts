@@ -84,6 +84,8 @@ export function redirectFor(pathname: string, mode: Mode | null): string | null 
   if (mode === 'vendor' && under(pathname, '/chats')) {
     const m = pathname.match(/^\/chats\/with\/([^/]+)/);
     if (m) return `/dashboard/messages/${m[1]}`;
+    const o = pathname.match(/^\/chats\/([^/]+)\/messages/);
+    if (o) return `/dashboard/messages/order/${o[1]}`;
     return pathname === '/chats' ? '/dashboard/messages' : '/dashboard/orders';
   }
   if (mode === 'customer' && VENDOR_ONLY.some((b) => under(pathname, b))) return '/explore';

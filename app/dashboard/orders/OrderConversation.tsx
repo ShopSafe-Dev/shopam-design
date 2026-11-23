@@ -2,14 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Send, Check, X, Truck, CheckCircle2, ShoppingBag, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Check, X, Truck, CheckCircle2, ShoppingBag, RotateCcw } from 'lucide-react';
 import { money, SUGGESTED_SHIPPING_FEE } from '@/lib/order-steps';
 import type { UIOrder, ConversationMessage } from './order-transform';
 
 interface OrderConversationProps {
   order: UIOrder;
-  messageInput: string;
-  onMessageInputChange: (value: string) => void;
   convError: string;
   onConvErrorChange: (value: string) => void;
   onBack: () => void;
@@ -20,7 +18,6 @@ interface OrderConversationProps {
   onReject: (orderId: string) => void;
   onSetShippingFee: (orderId: string, fee: number) => void;
   onResolveDispute: (orderId: string, resolution: string) => void;
-  onSendMessage: () => void;
 }
 
 const RESOLUTIONS = ['Refund', 'Replace item', 'Reorder', 'Partial refund'];
@@ -69,8 +66,6 @@ function ItemRows({ items }: { items: ConversationMessage['items'] }) {
 
 export default function OrderConversation({
   order,
-  messageInput,
-  onMessageInputChange,
   convError,
   onConvErrorChange,
   onBack,
@@ -81,7 +76,6 @@ export default function OrderConversation({
   onReject,
   onSetShippingFee,
   onResolveDispute,
-  onSendMessage,
 }: OrderConversationProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [fee, setFee] = useState(SUGGESTED_SHIPPING_FEE);
@@ -111,7 +105,7 @@ export default function OrderConversation({
           href={`/dashboard/messages/order/${order.id}`}
           className="rounded-full bg-slate-100 px-3 py-1.5 text-[11px] font-bold text-slate-700 hover:bg-slate-200"
         >
-          Full chat
+          Message buyer
         </Link>
       </div>
 
@@ -310,29 +304,6 @@ export default function OrderConversation({
           {['delivered', 'completed'].includes(status) && (
             <p className="rounded-full bg-emerald-50 py-2.5 text-center text-xs font-semibold text-emerald-700">Delivered — payout scheduled</p>
           )}
-        </div>
-      </div>
-
-      {/* Composer */}
-      <div className="flex flex-shrink-0 items-center gap-2 border-t border-slate-200/70 bg-white px-3 py-3 pb-[max(env(safe-area-inset-bottom),12px)] sm:px-4">
-        <div className="mx-auto flex w-full max-w-3xl items-center gap-2">
-          <div className="flex-1 overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 transition-all focus-within:border-ink focus-within:bg-white">
-            <input
-              type="text"
-              value={messageInput}
-              onChange={(e) => onMessageInputChange(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && onSendMessage()}
-              placeholder="Type a message…"
-              className="w-full bg-transparent px-5 py-3 text-sm text-ink outline-none placeholder:text-slate-500"
-            />
-          </div>
-          <button
-            onClick={onSendMessage}
-            disabled={!messageInput.trim()}
-            className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-ink text-white transition-colors hover:bg-[#FA3728] disabled:opacity-40"
-          >
-            <Send size={18} strokeWidth={2.5} />
-          </button>
         </div>
       </div>
     </div>

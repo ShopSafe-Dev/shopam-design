@@ -2,10 +2,14 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Heart, MessageCircle, Share2, Bookmark, MoreVertical } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Bookmark, Check, UserPlus } from 'lucide-react';
 import { compactNumber } from '@/lib/format';
-import type { FeedPost } from './data';
+import { feedApi, isAuthError } from '@/lib/feed/api';
+import { useUser } from '@/lib/auth/useUser';
+import { isDemoPost, type FeedPost } from './data';
+import CommentsSheet from './CommentsSheet';
 
 /**
  * Shared post card used by the Feed and the vendor shop "Posts" tab.
@@ -16,10 +20,87 @@ export default function PostCard({ post, index = 0 }: { post: FeedPost; index?: 
   const [saved, setSaved] = useState(!!post.isSaved);
   const [expanded, setExpanded] = useState(false);
   const [likes, setLikes] = useState(post.likes);
+  const [likeId, setLikeId] = useState<string | null>(post.myLikeId ?? null);
+  const [likeBusy, setLikeBusy] = useState(false);
+  const [comments, setComments] = useState(post.comments);
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [shares, setShares] = useState(post.shares ?? 0);
+  const [copied, setCopied] = useState(false);
+  const [following, setFollowing] = useState(!!post.isFollowing);
+  const [followId, setFollowId] = useState<string | null>(post.myFollowId ?? null);
+  const [followBusy, setFollowBusy] = useState(false);
+  const router = useRouter();
+  const { user } = useUser();
+  const demo = isDemoPost(post);
+  const isOwn = !!user && !!post.vendorUserId && user.id === post.vendorUserId;
 
-  const toggleLike = () => {
-    setLikes((n) => (liked ? n - 1 : n + 1));
-    setLiked((v) => !v);
+  const needSignIn = () => router.push(`/auth/signin?redirect=${encodeURIComponent('/feed')}`);
+
+  /** Optimistic: the heart flips at once and is rolled back if the server says no. */
+  const toggleLike = async () => {
+    if (demo) {
+      setLikes((n) => (liked ? n - 1 : n + 1));
+      setLiked((v) => !v);
+      return;
+    }
+    if (!user) return needSignIn();
+    if (likeBusy) return;
+    setLikeBusy(true);
+    const wasLiked = liked;
+    const prevId = likeId;
+    setLiked(!wasLiked);
+    setLikes((n) => Math.max(0, n + (wasLiked ? -1 : 1)));
+    try {
+      if (wasLiked) {
+        if (prevId) await feedApi.unlike(prevId);
+        setLikeId(null);
+      } else {
+        setLikeId(await feedApi.like(post.id));
+      }
+    } catch (e) {
+      setLiked(wasLiked);
+      setLikes((n) => Math.max(0, n + (wasLiked ? 1 : -1)));
+      if (isAuthError(e)) needSignIn();
+    } finally {
+      setLikeBusy(false);
+    }
+  };
+
+  const toggleFollow = async () => {
+    if (!post.vendorProfileId) return;
+    if (!user) return needSignIn();
+    if (followBusy) return;
+    setFollowBusy(true);
+    const was = following;
+    setFollowing(!was);
+    try {
+      if (was) {
+        if (followId) await feedApi.unfollow(followId);
+        setFollowId(null);
+      } else {
+        setFollowId(await feedApi.follow(post.vendorProfileId));
+      }
+    } catch (e) {
+      setFollowing(was);
+      if (isAuthError(e)) needSignIn();
+    } finally {
+      setFollowBusy(false);
+    }
+  };
+
+  const share = async () => {
+    const url = `${window.location.origin}${vendorHref}`;
+    try {
+      if (navigator.share) await navigator.share({ title: post.vendorName, text: post.caption.slice(0, 120), url });
+      else {
+        await navigator.clipboard.writeText(url);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1800);
+      }
+    } catch {
+      return; // the person closed the share sheet
+    }
+    if (!demo && user) feedApi.share(post.id).then(setShares).catch(() => {});
   };
 
   const vendorHref = `/vendors/${encodeURIComponent(post.vendorName)}`;
@@ -55,12 +136,18 @@ export default function PostCard({ post, index = 0 }: { post: FeedPost; index?: 
             )}
           </div>
         </Link>
-        <button
-          aria-label="More options"
-          className="rounded-full p-1.5 text-slate-500 transition-colors hover:bg-slate-100"
-        >
-          <MoreVertical size={18} />
-        </button>
+        {!demo && !isOwn && post.vendorProfileId && (
+          <button
+            onClick={() => void toggleFollow()}
+            disabled={followBusy}
+            className={`flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
+              following ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-ink text-white hover:bg-[#FA3728]'
+            }`}
+          >
+            {following ? <Check size={13} /> : <UserPlus size={13} />}
+            {following ? 'Following' : 'Follow'}
+          </button>
+        )}
       </div>
 
       {/* Image — large rounded square */}
@@ -86,7 +173,7 @@ export default function PostCard({ post, index = 0 }: { post: FeedPost; index?: 
       <div className="px-3.5 pb-3.5 pt-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <button onClick={toggleLike} aria-label="Like" className="group flex items-center gap-1.5">
+            <button onClick={() => void toggleLike()} aria-label={liked ? 'Unlike' : 'Like'} aria-pressed={liked} className="group flex items-center gap-1.5">
               <Heart
                 size={20}
                 className={`transition-colors ${
@@ -95,18 +182,20 @@ export default function PostCard({ post, index = 0 }: { post: FeedPost; index?: 
               />
               <span className="text-sm font-semibold text-ink">{likes}</span>
             </button>
-            <button className="group flex items-center gap-1.5" aria-label="Comments">
+            <button onClick={() => (demo ? undefined : setCommentsOpen(true))} className="group flex items-center gap-1.5" aria-label="Comments">
               <MessageCircle
                 size={20}
                 className="text-slate-700 transition-colors group-hover:text-[#FA3728]"
               />
-              <span className="text-sm font-semibold text-ink">{post.comments}</span>
+              <span className="text-sm font-semibold text-ink">{comments}</span>
             </button>
-            <button className="group" aria-label="Share">
+            <button onClick={() => void share()} className="group flex items-center gap-1.5" aria-label="Share">
               <Share2
                 size={20}
                 className="text-slate-700 transition-colors group-hover:text-[#FA3728]"
               />
+              {shares > 0 && <span className="text-sm font-semibold text-ink">{shares}</span>}
+              {copied && <span className="text-[11px] font-semibold text-emerald-600">Link copied</span>}
             </button>
           </div>
           <button onClick={() => setSaved((v) => !v)} aria-label="Save">
@@ -176,6 +265,9 @@ export default function PostCard({ post, index = 0 }: { post: FeedPost; index?: 
           </Link>
         </div>
       </div>
+    {!demo && (
+        <CommentsSheet postId={post.id} open={commentsOpen} onClose={() => setCommentsOpen(false)} onCountChange={(d) => setComments((n) => Math.max(0, n + d))} />
+      )}
     </motion.article>
   );
 }

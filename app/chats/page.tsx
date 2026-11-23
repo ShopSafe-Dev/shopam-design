@@ -98,7 +98,7 @@ export default function ChatsListPage() {
             loading={inbox.loading}
             error={inbox.error}
             onRetry={inbox.reload}
-            hrefFor={(c) => (c.order ? `/chats/${c.order}` : `/chats/with/${c.other}?name=${encodeURIComponent(c.name)}`)}
+            hrefFor={(c) => (c.order ? `/chats/${c.order}/messages` : `/chats/with/${c.other}?name=${encodeURIComponent(c.name)}`)}
             emptyTitle="No messages yet"
             emptyText="Message a seller from their profile or an order and the conversation shows up here."
           />

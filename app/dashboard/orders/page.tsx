@@ -4,8 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Search, Loader2 } from 'lucide-react';
 import { ordersService } from '@/lib/api/services';
-import { chatApi } from '@/lib/chat/api';
-import { transformOrder, type UIOrder, type UIOrderStatus, type ConversationMessage } from './order-transform';
+import { transformOrder, type UIOrder, type UIOrderStatus } from './order-transform';
 import OrderConversation from './OrderConversation';
 import ModifyOrderModal, { type ModifyChanges } from './ModifyOrderModal';
 import RejectOrderModal from './RejectOrderModal';
@@ -15,7 +14,6 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<UIOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<UIOrder | null>(null);
-  const [messageInput, setMessageInput] = useState('');
   const [convError, setConvError] = useState('');
   const [modifyTarget, setModifyTarget] = useState<UIOrder | null>(null);
   const [rejectTarget, setRejectTarget] = useState<UIOrder | null>(null);
@@ -83,29 +81,6 @@ export default function OrdersPage() {
     setRejectTarget(null);
   };
 
-  // Previously this only appended to local state and never reached the buyer. It now sends for real.
-  const handleSendMessage = async () => {
-    const content = messageInput.trim();
-    if (!content || !selectedOrder) return;
-    const message: ConversationMessage = {
-      id: `m${Date.now()}`,
-      type: 'text',
-      timestamp: new Date().toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' }),
-      content,
-      fromBuyer: false,
-    };
-    setConvError('');
-    setMessageInput('');
-    try {
-      // The message belongs to THIS order's chat. The server derives the recipient from the order.
-      await chatApi.send({ order: selectedOrder.id, content });
-      setSelectedOrder((prev) => (prev ? { ...prev, messages: [...prev.messages, message] } : prev));
-    } catch {
-      setMessageInput(content);
-      setConvError('Message not sent. Please try again.');
-    }
-  };
-
   const filteredOrders = activeTab === 'All' ? orders : orders.filter((o) => o.status === activeTab);
 
   /* ── Conversation view ── */
@@ -114,8 +89,6 @@ export default function OrdersPage() {
       <>
         <OrderConversation
           order={selectedOrder}
-          messageInput={messageInput}
-          onMessageInputChange={setMessageInput}
           convError={convError}
           onConvErrorChange={setConvError}
           onBack={() => setSelectedOrder(null)}
@@ -126,7 +99,6 @@ export default function OrdersPage() {
           onReject={openReject}
           onSetShippingFee={handleSetShippingFee}
           onResolveDispute={handleResolveDispute}
-          onSendMessage={handleSendMessage}
         />
 
         <AnimatePresence>
