@@ -12,7 +12,7 @@ import ProductCard from '@/app/explore/components/ProductCard';
 import PostCard from '@/app/components/feed/PostCard';
 import Field from '../components/Field';
 import Modal from '../components/Modal';
-import { FEED_POSTS, type FeedPost } from '@/app/components/feed/data';
+import { FEED_POSTS, toFeedPost, type FeedPost } from '@/app/components/feed/data';
 
 type Tab = 'products' | 'posts';
 
@@ -158,22 +158,28 @@ function CreatePostModal({
   const submit = async () => {
     if (!caption.trim()) return;
     setBusy(true);
+    let created: FeedPost | null = null;
     try {
-      await postsService.createPost({ caption: caption.trim(), media: file ? [file] : undefined });
+      const saved = await postsService.createPost({ caption: caption.trim(), media: file ? [file] : undefined });
+      // Real post from the API: real UUID, so like/comment/share work on it straight away.
+      const mapped = toFeedPost(saved);
+      created = { ...mapped, vendorName: mapped.vendorName || authorName || 'Your Shop', image: mapped.image || image || '', timeAgo: 'Just now' };
     } catch {
-      /* dev/offline — still show it locally */
+      /* dev/offline: show it locally. The demo- id keeps the card from calling the API. */
     }
-    onCreated({
-      id: Date.now(),
-      vendorName: authorName || 'Your Shop',
-      verified: true,
-      timeAgo: 'Just now',
-      image: image ?? '',
-      caption: caption.trim(),
-      likes: 0,
-      comments: 0,
-      tags: [],
-    });
+    onCreated(
+      created ?? {
+        id: `demo-local-${Date.now()}`,
+        vendorName: authorName || 'Your Shop',
+        verified: true,
+        timeAgo: 'Just now',
+        image: image ?? '',
+        caption: caption.trim(),
+        likes: 0,
+        comments: 0,
+        tags: [],
+      }
+    );
     setBusy(false);
   };
 
