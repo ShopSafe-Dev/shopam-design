@@ -20,3 +20,11 @@ export const API_BASE_URL: string = rawBase.replace(/\/+$/, '');
 export const API_IS_CROSS_ORIGIN: boolean = API_BASE_URL !== '';
 
 export const WS_URL: string | undefined = process.env.NEXT_PUBLIC_WS_URL || undefined;
+
+/**
+ * NEXT_PUBLIC_WS_NOTIFICATIONS_URL
+ *   Full wss:// URL of the notifications socket (ws/notifications/). Optional: when unset it is derived from
+ *   NEXT_PUBLIC_WS_URL by swapping a trailing /ws/chat/ for /ws/notifications/.
+ */
+export const WS_NOTIFICATIONS_URL: string | undefined =
+  process.env.NEXT_PUBLIC_WS_NOTIFICATIONS_URL || (WS_URL ? WS_URL.replace(/\/ws\/chat\/?$/, '/ws/notifications/') : undefined);

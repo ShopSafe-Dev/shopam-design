@@ -1,5 +1,8 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
+import { notificationHref, notificationParts } from '@/lib/notifications/format';
+import { useMode } from '@/lib/auth/useMode';
 import { useEffect, useState } from 'react';
 import { Bell, Loader2 } from 'lucide-react';
 import { notificationsService } from '@/lib/api';
@@ -22,18 +25,30 @@ function timeAgo(iso: string): string {
 }
 
 function Row({ item, onRead }: { item: Notification; onRead: (id: number) => void }) {
+  const router = useRouter();
+  const { mode } = useMode();
   return (
     <button
-      onClick={() => onRead(item.id)}
+      onClick={() => {
+        onRead(item.id);
+        const href = notificationHref(item, mode);
+        if (href) router.push(href);
+      }}
       className={`flex w-full items-start gap-3 border-b border-slate-100 px-4 py-3.5 text-left transition-colors last:border-0 hover:bg-slate-50/60 ${
         item.is_read ? 'border-l-2 border-l-transparent' : 'border-l-2 border-l-[#FA3728]'
       }`}
     >
       <div className="min-w-0 flex-1">
         <p className="text-sm leading-snug text-slate-700">
-          <span className="font-semibold text-ink">{item.actor?.username ?? 'ShopAm'}</span>
-          {': '}
-          {item.verb}
+          {(() => {
+            const { name, rest } = notificationParts(item);
+            return (
+              <>
+                {name && <span className="font-semibold text-ink">{name} </span>}
+                {rest}
+              </>
+            );
+          })()}
         </p>
         <p className="mt-0.5 text-[11px] text-slate-500">{timeAgo(item.created_at)}</p>
       </div>

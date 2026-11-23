@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Search, Loader2 } from 'lucide-react';
-import { ordersService, messagesService } from '@/lib/api/services';
+import { ordersService } from '@/lib/api/services';
+import { chatApi } from '@/lib/chat/api';
 import { transformOrder, type UIOrder, type UIOrderStatus, type ConversationMessage } from './order-transform';
 import OrderConversation from './OrderConversation';
 import ModifyOrderModal, { type ModifyChanges } from './ModifyOrderModal';
@@ -45,14 +46,17 @@ export default function OrdersPage() {
     setConvError('');
     try {
       await action();
-    } catch {
-      setConvError(errorMessage);
+    } catch (e) {
+      // 409 = the order is not on that step (the other side acted, or the step was skipped). Show the server's reason.
+      const err = e as { response?: { status?: number; data?: { error?: string; detail?: string } } };
+      setConvError(err.response?.status === 409 || err.response?.status === 400 ? err.response.data?.error || err.response.data?.detail || errorMessage : errorMessage);
     }
     await refresh(id);
   };
 
   const handleAccept = (id: string) => run(() => ordersService.acceptOrder(id), id, 'Failed to accept order. Please try again.');
   const handleSetShippingFee = (id: string, fee: number) => run(() => ordersService.setShippingFee(id, fee.toFixed(2)), id, 'Failed to set the delivery fee.');
+  const handleConfirmHandover = (id: string, code: string) => run(() => ordersService.confirmHandover(id, { code }), id, 'Wrong code or the order is not ready for handover.');
   const handleStartDelivery = (id: string) => run(() => ordersService.startDelivery(id), id, 'Failed to mark as shipped.');
   const handleResolveDispute = (id: string, resolution: string) => run(() => ordersService.resolveDispute(id, resolution), id, 'Failed to resolve the dispute.');
 
@@ -93,7 +97,8 @@ export default function OrdersPage() {
     setConvError('');
     setMessageInput('');
     try {
-      await messagesService.sendMessage({ recipient: selectedOrder.customerId, content });
+      // The message belongs to THIS order's chat. The server derives the recipient from the order.
+      await chatApi.send({ order: selectedOrder.id, content });
       setSelectedOrder((prev) => (prev ? { ...prev, messages: [...prev.messages, message] } : prev));
     } catch {
       setMessageInput(content);
@@ -115,6 +120,7 @@ export default function OrdersPage() {
           onConvErrorChange={setConvError}
           onBack={() => setSelectedOrder(null)}
           onStartDelivery={handleStartDelivery}
+          onConfirmHandover={handleConfirmHandover}
           onAccept={handleAccept}
           onModify={openModify}
           onReject={openReject}

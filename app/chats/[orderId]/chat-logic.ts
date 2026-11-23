@@ -36,7 +36,7 @@ export interface ChatMessage {
   address?: string;
   reason?: string;
   /** What the viewer is waiting on, used to render the right call-to-action. */
-  awaiting?: 'vendor' | 'customer' | 'payment' | 'delivery' | 'post';
+  awaiting?: 'vendor' | 'customer' | 'shipping' | 'fee' | 'payment' | 'delivery' | 'post';
 }
 
 /* ─────────────── Helpers ─────────────── */
@@ -131,9 +131,14 @@ export function buildMessagesUI(
       from: 'vendor',
       items: toItems(o),
       ...totals,
-      awaiting: ['awaiting_payment', 'awaiting_shipping_details', 'shipping_set'].includes(o.status)
-        ? 'payment'
-        : undefined,
+      awaiting:
+        o.status === 'awaiting_shipping_details'
+          ? 'shipping'
+          : o.status === 'shipping_set'
+            ? 'fee'
+            : o.status === 'awaiting_payment'
+              ? 'payment'
+              : undefined,
     });
   }
 

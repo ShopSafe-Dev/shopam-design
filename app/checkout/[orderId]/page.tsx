@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import {
@@ -17,9 +17,18 @@ import { authService, ordersService } from '@/lib/api';
 import type { Order } from '@/lib/api';
 import { money } from '@/lib/order-steps';
 import OrderProgress from '@/app/components/OrderProgress';
+import OrderSteps from '@/app/components/OrderSteps';
 import PaymentStep from './PaymentStep';
 
-type Step = 'delivery' | 'payment' | 'done';
+/**
+ * delivery: buyer gives delivery details
+ * waiting:  details sent, vendor has not sent the delivery fee yet (payment locked)
+ * payment:  vendor fee is in, buyer reviews and pays
+ */
+type Step = 'delivery' | 'waiting' | 'payment' | 'done';
+
+const stepFor = (status: Order['status']): Step | 'blocked' =>
+  status === 'awaiting_shipping_details' ? 'delivery' : status === 'shipping_set' ? 'waiting' : status === 'awaiting_payment' ? 'payment' : 'blocked';
 
 export default function CheckoutPage() {
   const params = useParams();
@@ -30,6 +39,7 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [step, setStep] = useState<Step>('delivery');
+  const locked = order ? stepFor(order.status) === 'blocked' : false;
   const [busy, setBusy] = useState(false);
 
   const [shippingType, setShippingType] = useState<'delivery' | 'pickup'>('delivery');
@@ -49,20 +59,35 @@ export default function CheckoutPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderId]);
 
-  const load = async () => {
-    try {
-      setLoading(true);
-      setError('');
-      const data = await ordersService.getOrder(orderId);
-      setOrder(data);
-      setAddress(data.shipping_address ?? '');
-      if (data.shipping_type) setShippingType(data.shipping_type);
-    } catch {
-      setError('We could not load this order.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const load = useCallback(
+    async (silent = false) => {
+      try {
+        if (!silent) setLoading(true);
+        setError('');
+        const data = await ordersService.getOrder(orderId);
+        setOrder(data);
+        if (!silent) {
+          setAddress(data.shipping_address && data.shipping_address !== 'Pickup' ? data.shipping_address : '');
+          if (data.shipping_type) setShippingType(data.shipping_type);
+        }
+        const next = stepFor(data.status);
+        // The server decides the step; the buyer can never sit on a step the order has not reached.
+        if (next !== 'blocked') setStep((cur) => (cur === 'done' ? cur : next));
+      } catch {
+        if (!silent) setError('We could not load this order.');
+      } finally {
+        if (!silent) setLoading(false);
+      }
+    },
+    [orderId]
+  );
+
+  // While waiting for the vendor's delivery fee, check again every few seconds.
+  useEffect(() => {
+    if (step !== 'waiting') return;
+    const t = setInterval(() => void load(true), 6000);
+    return () => clearInterval(t);
+  }, [step, load]);
 
   const totals = useMemo(() => {
     const total = Number(order?.grand_total) || 0;
@@ -83,22 +108,27 @@ export default function CheckoutPage() {
       const shippingAddress =
         shippingType === 'pickup' ? 'Pickup' : [address.trim(), city.trim()].filter(Boolean).join(', ');
       await ordersService.setShipping(orderId, { shipping_type: shippingType, shipping_address: shippingAddress });
-    } catch {
-      /* best-effort — continue to payment */
+      await load(true); // moves to 'waiting' (vendor fee pending) or 'payment' if the fee is already in
+    } catch (e) {
+      const err = e as { response?: { status?: number; data?: { error?: string } } };
+      setError(err.response?.data?.error || 'Could not save your delivery details. Please try again.');
+      if (err.response?.status === 409) await load(true);
     } finally {
       setBusy(false);
     }
-    setStep('payment');
   };
 
   const handlePaid = async () => {
     try {
       await ordersService.paymentDecision(orderId, { action: 'pay' });
-    } catch {
-      /* best-effort */
+    } catch (e) {
+      const err = e as { response?: { status?: number; data?: { error?: string } } };
+      setError(err.response?.data?.error || 'Payment could not be completed. Please try again.');
+      await load(true);
+      return;
     }
-    await load();
     setStep('done');
+    await load(true);
     window.dispatchEvent(new Event('shopam:cart-updated'));
   };
 
@@ -116,6 +146,21 @@ export default function CheckoutPage() {
         <p className="text-sm text-slate-500">{error}</p>
         <Link href="/chats" className="rounded-full bg-ink px-6 py-2.5 text-sm font-semibold text-white">
           Back to orders
+        </Link>
+      </div>
+    );
+  }
+
+  /* ── Order is not on a checkout step (already paid, cancelled, waiting on vendor review, ...) ── */
+  if (order && locked && step !== 'done') {
+    return (
+      <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 bg-canvas px-6 text-center">
+        <p className="max-w-sm text-sm font-semibold text-ink">
+          {order.workflow?.blocked_reason || 'Checkout is not available for this order right now.'}
+        </p>
+        <OrderSteps workflow={order.workflow} className="max-w-sm" />
+        <Link href={`/chats/${orderId}`} className="rounded-full bg-ink px-6 py-2.5 text-sm font-semibold text-white">
+          Back to the order chat
         </Link>
       </div>
     );
@@ -176,9 +221,9 @@ export default function CheckoutPage() {
       <main className="mx-auto max-w-5xl px-4 pb-24 pt-6 sm:px-6">
         {/* Steps */}
         <div className="mb-6 flex items-center justify-center gap-2 text-xs font-semibold">
-          {(['delivery', 'payment'] as Step[]).map((s, i) => {
-            const active = step === s;
-            const done = (s === 'delivery' && step === 'payment') || false;
+          {(['delivery', 'payment'] as const).map((s, i) => {
+            const active = s === 'delivery' ? step === 'delivery' || step === 'waiting' : step === 'payment';
+            const done = s === 'delivery' && (step === 'waiting' || step === 'payment');
             return (
               <div key={s} className="flex items-center gap-2">
                 {i > 0 && <span className="h-px w-6 bg-slate-300 sm:w-10" />}
@@ -200,7 +245,7 @@ export default function CheckoutPage() {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
           {/* Main column */}
           <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6">
-            {error && step === 'delivery' && (
+            {error && (
               <p className="mb-4 rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-red-600">{error}</p>
             )}
 
@@ -282,6 +327,22 @@ export default function CheckoutPage() {
                   className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-ink py-4 text-sm font-bold text-white transition-colors hover:bg-[#FA3728] disabled:opacity-60"
                 >
                   {busy ? <Loader2 size={18} className="animate-spin" /> : 'Continue to payment'}
+                </button>
+              </div>
+            )}
+
+            {step === 'waiting' && (
+              <div className="flex flex-col items-center gap-3 py-8 text-center">
+                <Loader2 className="animate-spin text-[#FA3728]" size={28} />
+                <h2 className="text-lg font-bold text-ink">Waiting for the vendor&apos;s delivery fee</h2>
+                <p className="max-w-sm text-xs text-slate-500">
+                  Your delivery details are saved. You can pay once the vendor sends the delivery fee. This page updates by itself.
+                </p>
+                <button
+                  disabled
+                  className="mt-2 w-full max-w-xs cursor-not-allowed rounded-full bg-slate-200 py-3 text-sm font-bold text-slate-500"
+                >
+                  Review &amp; Pay
                 </button>
               </div>
             )}

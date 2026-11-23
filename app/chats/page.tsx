@@ -98,7 +98,7 @@ export default function ChatsListPage() {
             loading={inbox.loading}
             error={inbox.error}
             onRetry={inbox.reload}
-            hrefFor={(c) => `/chats/with/${c.userId}?name=${encodeURIComponent(c.name)}`}
+            hrefFor={(c) => (c.order ? `/chats/${c.order}` : `/chats/with/${c.other}?name=${encodeURIComponent(c.name)}`)}
             emptyTitle="No messages yet"
             emptyText="Message a seller from their profile or an order and the conversation shows up here."
           />
@@ -143,7 +143,7 @@ export default function ChatsListPage() {
                 <h2 className="px-1 text-[11px] font-bold uppercase tracking-widest text-slate-500">Active</h2>
                 <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
                   {activeOrders.map((order, i) => (
-                    <OrderRow key={order.id} order={order} index={i} />
+                    <OrderRow key={order.id} order={order} index={i} unread={inbox.unreadForOrder(order.id)} />
                   ))}
                 </div>
               </section>
@@ -154,7 +154,7 @@ export default function ChatsListPage() {
                 <h2 className="px-1 text-[11px] font-bold uppercase tracking-widest text-slate-500">Past orders</h2>
                 <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
                   {pastOrders.map((order, i) => (
-                    <OrderRow key={order.id} order={order} index={i} />
+                    <OrderRow key={order.id} order={order} index={i} unread={inbox.unreadForOrder(order.id)} />
                   ))}
                 </div>
               </section>
@@ -168,7 +168,7 @@ export default function ChatsListPage() {
   );
 }
 
-function OrderRow({ order, index }: { order: Order; index: number }) {
+function OrderRow({ order, index, unread }: { order: Order; index: number; unread: number }) {
   const initials = (order.vendor_name || '??').slice(0, 2).toUpperCase();
   const colorCls = avatarColor(order.vendor);
   const needsAction = ['pending_customer_approval', 'awaiting_shipping_details', 'awaiting_payment', 'delivered'].includes(
@@ -201,7 +201,7 @@ function OrderRow({ order, index }: { order: Order; index: number }) {
             {statusLabel(order)}
           </p>
         </div>
-        {needsAction && <span className="h-2 w-2 shrink-0 rounded-full bg-[#FA3728]" />}
+        {unread > 0 ? <UnreadBadge count={unread} className="shrink-0" /> : needsAction && <span className="h-2 w-2 shrink-0 rounded-full bg-[#FA3728]" />}
       </Link>
     </motion.div>
   );

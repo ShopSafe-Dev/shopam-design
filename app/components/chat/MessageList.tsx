@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { ArrowDown, Check, Clock, Loader2, RotateCcw, Trash2 } from 'lucide-react';
+import { ArrowDown, Check, CheckCheck, Clock, Loader2, RotateCcw, Trash2 } from 'lucide-react';
 import type { ChatMsg } from '@/lib/chat/types';
 import { dayLabel, sameDay, timeLabel } from './time';
 
@@ -99,6 +99,13 @@ export default function MessageList({ messages, meId, loading, hasMore, loadingO
             const joinsPrev = !!prev && !newDay && prev.sender === m.sender && Date.parse(m.created_at) - Date.parse(prev.created_at) < GROUP_GAP_MS;
             const joinsNext =
               !!next && sameDay(next.created_at, m.created_at) && next.sender === m.sender && Date.parse(next.created_at) - Date.parse(m.created_at) < GROUP_GAP_MS;
+            if (m.is_system) {
+              return (
+                <div key={m.id} className="my-2 flex justify-center">
+                  <span className="max-w-[85%] rounded-full bg-slate-200/60 px-3 py-1 text-center text-[11px] font-medium text-slate-600">{m.content}</span>
+                </div>
+              );
+            }
             return (
               <div key={m.id}>
                 {newDay && (
@@ -130,7 +137,14 @@ export default function MessageList({ messages, meId, loading, hasMore, loadingO
                       <div className="mt-1 flex items-center gap-1 text-[10px] text-slate-500">
                         {timeLabel(m.created_at)}
                         {m.is_edited && <span>· edited</span>}
-                        {isMine && (m.local === 'sending' ? <Clock size={10} aria-label="Sending" /> : <Check size={11} aria-label="Sent" />)}
+                        {isMine &&
+                          (m.local === 'sending' ? (
+                            <Clock size={10} aria-label="Sending" />
+                          ) : m.is_read ? (
+                            <CheckCheck size={12} className="text-sky-500" aria-label="Read" />
+                          ) : (
+                            <Check size={11} aria-label="Sent" />
+                          ))}
                       </div>
                     )
                   )}

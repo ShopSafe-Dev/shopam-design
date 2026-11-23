@@ -1,5 +1,6 @@
 'use client';
 
+import { notificationParts } from '@/lib/notifications/format';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell } from 'lucide-react';
 import type { Notification } from '@/lib/api';
@@ -68,8 +69,15 @@ export default function NotificationsPanel({
                   >
                     <div className="min-w-0 flex-1">
                       <p className="text-[13px] leading-snug text-slate-700">
-                        <span className="font-semibold text-ink">{item.actor?.username ?? 'ShopAm'}</span>
-                        {': '}{item.verb}
+                        {(() => {
+                          const { name, rest } = notificationParts(item);
+                          return (
+                            <>
+                              {name && <span className="font-semibold text-ink">{name} </span>}
+                              {rest}
+                            </>
+                          );
+                        })()}
                       </p>
                       <p className="mt-0.5 text-[11px] text-slate-600">{timeAgo(item.created_at)}</p>
                     </div>

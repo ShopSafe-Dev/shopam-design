@@ -10,7 +10,10 @@ import ConnectionPill, { LiveDot } from './ConnectionPill';
 import MessageList from './MessageList';
 
 interface Props {
-  otherId: string;
+  /** Order stream. When set, this window shows only that order's messages. */
+  order?: string | null;
+  /** The other person's user id (required for the general stream, optional for an order stream). */
+  otherId?: string | null;
   /** Name to show until the first message tells us (e.g. from a "Message seller" link). */
   fallbackName?: string;
   subtitle?: string;
@@ -28,8 +31,8 @@ interface Props {
  * decides the route, colour and surrounding chrome. Which bubbles are "mine" comes only from
  * message.sender === my user id, so a role mix-up cannot flip sides.
  */
-export default function ThreadWindow({ otherId, fallbackName = '', subtitle, backHref, accent, className, headerRight, banner, emptyText }: Props) {
-  const t = useThread(otherId);
+export default function ThreadWindow({ order, otherId, fallbackName = '', subtitle, backHref, accent, className, headerRight, banner, emptyText }: Props) {
+  const t = useThread({ order: order ?? null, other: otherId ?? null });
   const [draft, setDraft] = useState('');
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const name = t.name || fallbackName || 'Chat';
@@ -48,7 +51,7 @@ export default function ThreadWindow({ otherId, fallbackName = '', subtitle, bac
           <Link href={backHref} aria-label="Back" className="-ml-1 flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-slate-100">
             <ArrowLeft size={20} />
           </Link>
-          <Avatar id={otherId} name={name} size={40} />
+          <Avatar id={t.other || otherId || order || 'x'} name={name} size={40} />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-bold text-ink">{name}</p>
             <div className="flex items-center gap-2">

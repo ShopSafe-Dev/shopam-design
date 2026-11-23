@@ -2,10 +2,14 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Bell } from 'lucide-react';
 import { notificationsService } from '@/lib/api';
 import type { Notification } from '@/lib/api';
+import { notificationHref, notificationParts } from '@/lib/notifications/format';
+import { useMode } from '@/lib/auth/useMode';
+import { useNotificationPush } from '@/lib/notifications/useLive';
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -24,20 +28,28 @@ export default function NotificationsBell() {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<Notification[]>([]);
   const ref = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  const { mode } = useMode();
   const unread = items.filter((n) => !n.is_read).length;
 
+  const load = useRef<() => void>(() => {});
   useEffect(() => {
     let active = true;
-    notificationsService
-      .list()
-      .then((n) => {
-        if (active) setItems(n);
-      })
-      .catch(() => { });
+    load.current = () =>
+      notificationsService
+        .list()
+        .then((n) => {
+          if (active) setItems(n);
+        })
+        .catch(() => { });
+    load.current();
     return () => {
       active = false;
     };
   }, []);
+
+  // Live push: a socket frame means something new arrived, so refetch the named list.
+  useNotificationPush(true, () => load.current());
 
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
@@ -108,15 +120,28 @@ export default function NotificationsBell() {
                 items.slice(0, 6).map((item) => (
                   <button
                     key={item.id}
-                    onClick={() => markRead(item.id)}
+                    onClick={() => {
+                      void markRead(item.id);
+                      const href = notificationHref(item, mode);
+                      if (href) {
+                        setOpen(false);
+                        router.push(href);
+                      }
+                    }}
                     className={`flex w-full items-start gap-2 border-b border-slate-50 px-4 py-3 text-left last:border-0 hover:bg-slate-50/60 ${item.is_read ? 'border-l-2 border-l-transparent' : 'border-l-2 border-l-[#FA3728]'
                       }`}
                   >
                     <div className="min-w-0 flex-1">
                       <p className="text-[13px] leading-snug text-slate-700">
-                        <span className="font-semibold text-ink">{item.actor?.username ?? 'ShopSafeNG'}</span>
-                        {': '}
-                        {item.verb}
+                        {(() => {
+                          const { name, rest } = notificationParts(item);
+                          return (
+                            <>
+                              {name && <span className="font-semibold text-ink">{name} </span>}
+                              {rest}
+                            </>
+                          );
+                        })()}
                       </p>
                       <p className="mt-0.5 text-[11px] text-slate-500">{timeAgo(item.created_at)}</p>
                     </div>

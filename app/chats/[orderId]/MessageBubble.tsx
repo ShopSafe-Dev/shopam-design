@@ -13,7 +13,9 @@ interface Props {
   onAcceptChanges: () => void;
   onRequestChanges: () => void;
   onReviewAndPay: () => void;
-  onConfirmDelivery: () => void;
+  /** Code the buyer reads out at handover. The vendor, not the buyer, confirms delivery with it. */
+  confirmationCode?: string;
+  onConfirmDelivery?: () => void;
   onLeaveReview: () => void;
   onRaiseDispute: () => void;
 }
@@ -207,7 +209,7 @@ export default function MessageBubble({
   onAcceptChanges,
   onRequestChanges,
   onReviewAndPay,
-  onConfirmDelivery,
+  confirmationCode,
   onLeaveReview,
   onRaiseDispute,
 }: Props) {
@@ -275,6 +277,31 @@ export default function MessageBubble({
           </div>
         )}
 
+        {/* Delivery steps: payment unlocks only after the vendor has sent the delivery fee */}
+        {message.kind === 'accepted' && message.awaiting === 'shipping' && !isVendor && (
+          <button
+            onClick={onReviewAndPay}
+            className="mt-2 w-full rounded-full bg-ink py-3 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#FA3728]"
+          >
+            Add delivery details
+          </button>
+        )}
+
+        {message.kind === 'accepted' && message.awaiting === 'fee' && !isVendor && (
+          <button
+            disabled
+            className="mt-2 w-full cursor-not-allowed rounded-full bg-slate-200 py-3 text-sm font-bold text-slate-500"
+          >
+            Review &amp; Pay · waiting for the vendor&apos;s delivery fee
+          </button>
+        )}
+
+        {message.kind === 'accepted' && (message.awaiting === 'shipping' || message.awaiting === 'fee') && isVendor && (
+          <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-center text-[11px] font-semibold text-amber-700">
+            {message.awaiting === 'fee' ? 'Send your delivery fee so the buyer can pay' : 'Waiting for the buyer delivery details'}
+          </p>
+        )}
+
         {/* Payment CTA */}
         {message.kind === 'accepted' && message.awaiting === 'payment' && !isVendor && (
           <button
@@ -293,12 +320,11 @@ export default function MessageBubble({
 
         {/* Confirm delivery */}
         {message.kind === 'shipped' && message.awaiting === 'delivery' && !isVendor && (
-          <button
-            onClick={onConfirmDelivery}
-            className="mt-2 w-full rounded-full bg-ink py-3 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#FA3728]"
-          >
-            Confirm delivery
-          </button>
+          <div className="mt-2 rounded-xl bg-slate-50 px-3 py-3 text-center ring-1 ring-slate-200">
+            <p className="text-[11px] font-semibold text-slate-600">Give this code to the vendor only when you have your order</p>
+            <p className="mt-1 font-mono text-2xl font-black tracking-[0.3em] text-ink">{confirmationCode || '------'}</p>
+            <p className="mt-1 text-[11px] text-slate-500">The vendor enters it to complete the delivery.</p>
+          </div>
         )}
 
         {message.kind === 'shipped' && message.awaiting === 'delivery' && isVendor && (

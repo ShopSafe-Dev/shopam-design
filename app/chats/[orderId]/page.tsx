@@ -9,6 +9,7 @@ import { authService, ordersService, reviewsService } from '@/lib/api';
 import type { Order } from '@/lib/api';
 import { statusLabel } from '@/lib/order-steps';
 import OrderProgress from '@/app/components/OrderProgress';
+import OrderSteps from '@/app/components/OrderSteps';
 import { buildMessagesUI } from './chat-logic';
 import MessageBubble from './MessageBubble';
 import ReviewModal from './ReviewModal';
@@ -28,16 +29,16 @@ export default function OrderChatPage() {
   const [error, setError] = useState('');
   const [reviewOpen, setReviewOpen] = useState(false);
   const [disputeOpen, setDisputeOpen] = useState(false);
-  const [actionBusy, setActionBusy] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // Customer-only page (vendor mode is redirected to /dashboard/messages), so the other side is always the seller.
   // vendor_user_id is the seller's USER id; `vendor` is the VendorProfile id and is not a valid chat recipient.
   const sellerUserId = order ? order.vendor_user_id ?? order.vendor : '';
-  const thread = useThread(sellerUserId);
+  const thread = useThread({ order: orderId, other: sellerUserId || null });
   const messages = useMemo(
-    () => (order ? buildMessagesUI(order, thread.messages, thread.meId ?? undefined) : []),
+    // System messages repeat what the order cards already show, so only people's own text goes in the bubbles.
+    () => (order ? buildMessagesUI(order, thread.messages.filter((m) => !m.is_system), thread.meId ?? undefined) : []),
     [order, thread.messages, thread.meId]
   );
   const failedCount = thread.messages.filter((m) => m.local === 'failed').length;
@@ -76,12 +77,19 @@ export default function OrderChatPage() {
     void thread.send(content);
   };
 
+  // A 409 means the order moved on (or never reached this step): show why and resync instead of a generic error.
+  const failWith = async (e: unknown, fallback: string) => {
+    const err = e as { response?: { status?: number; data?: { error?: string } } };
+    setError(err.response?.status === 409 ? err.response.data?.error || 'This order is not at that step.' : fallback);
+    if (err.response?.status === 409) await refreshOrder();
+  };
+
   const handleAcceptChanges = async () => {
     try {
       await ordersService.customerApprove(orderId, { action: 'accept' });
       await refreshOrder();
-    } catch {
-      setError('Could not accept the changes. Please try again.');
+    } catch (e) {
+      await failWith(e, 'Could not accept the changes. Please try again.');
     }
   };
 
@@ -90,21 +98,9 @@ export default function OrderChatPage() {
     inputRef.current?.focus();
   };
 
+  // Add delivery details and pay both live on the checkout page, which enforces the same step order.
   const handleReviewAndPay = () => {
     router.push(`/checkout/${orderId}`);
-  };
-
-  const handleConfirmDelivery = async () => {
-    if (!order) return;
-    setActionBusy(true);
-    try {
-      await ordersService.confirmHandover(orderId, { code: order.confirmation_code || '' });
-      await refreshOrder();
-    } catch {
-      setError('Could not confirm delivery. Please try again.');
-    } finally {
-      setActionBusy(false);
-    }
   };
 
   const handleSubmitReview = async (rating: number, comment: string) => {
@@ -129,8 +125,8 @@ export default function OrderChatPage() {
         reason: details ? `${reason} — ${details}` : reason,
       });
       await refreshOrder();
-    } catch {
-      setError('Could not submit the dispute. Please try again.');
+    } catch (e) {
+      await failWith(e, 'Could not submit the dispute. Please try again.');
     } finally {
       setDisputeOpen(false);
     }
@@ -205,6 +201,14 @@ export default function OrderChatPage() {
         </div>
       )}
 
+      {order?.workflow && (
+        <div className="flex-shrink-0 border-b border-slate-200/70 bg-white/70">
+          <div className="mx-auto max-w-2xl px-4 py-3 sm:px-6">
+            <OrderSteps workflow={order.workflow} />
+          </div>
+        </div>
+      )}
+
       {failedCount > 0 && (
         <div className="flex-shrink-0 border-b border-red-100 bg-red-50">
           <div className="mx-auto flex max-w-2xl items-center justify-between gap-3 px-4 py-2 text-[12px] text-red-600 sm:px-6">
@@ -245,7 +249,7 @@ export default function OrderChatPage() {
               onAcceptChanges={handleAcceptChanges}
               onRequestChanges={handleRequestChanges}
               onReviewAndPay={handleReviewAndPay}
-              onConfirmDelivery={handleConfirmDelivery}
+              confirmationCode={order?.confirmation_code}
               onLeaveReview={() => setReviewOpen(true)}
               onRaiseDispute={() => setDisputeOpen(true)}
             />

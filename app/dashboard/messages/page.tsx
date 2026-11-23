@@ -14,7 +14,7 @@ export default function VendorMessagesPage() {
   const [q, setQ] = useState('');
   const rows = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    return needle ? inbox.list.filter((c) => c.name.toLowerCase().includes(needle) || c.last.content.toLowerCase().includes(needle)) : inbox.list;
+    return needle ? inbox.list.filter((c) => c.name.toLowerCase().includes(needle) || (c.orderRef ?? '').toLowerCase().includes(needle.replace('#','')) || c.last.content.toLowerCase().includes(needle)) : inbox.list;
   }, [inbox.list, q]);
 
   return (
@@ -22,7 +22,7 @@ export default function VendorMessagesPage() {
       <div className="flex items-end justify-between">
         <div>
           <h2 className="text-xl font-extrabold text-ink">Messages</h2>
-          <p className="text-xs text-slate-600">Buyers who contacted you about products or orders.</p>
+          <p className="text-xs text-slate-600">One chat per order. Each order keeps its own thread.</p>
         </div>
       </div>
       <ConnectionBanner link={inbox.link} />
@@ -42,7 +42,7 @@ export default function VendorMessagesPage() {
         loading={inbox.loading}
         error={inbox.error}
         onRetry={inbox.reload}
-        hrefFor={(c) => `/dashboard/messages/${c.userId}?name=${encodeURIComponent(c.name)}`}
+        hrefFor={(c) => (c.order ? `/dashboard/messages/order/${c.order}` : `/dashboard/messages/${c.other}?name=${encodeURIComponent(c.name)}`)}
         emptyTitle={q ? 'No matches' : 'No messages yet'}
         emptyText={q ? 'Try a different name or word.' : 'When a buyer messages you, the conversation appears here.'}
       />

@@ -54,12 +54,15 @@ export default function ConversationList({ rows, meId, loading, error, onRetry, 
       {rows.map((c, i) => {
         const mine = c.last.sender === meId;
         return (
-          <motion.div key={c.userId} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 8) * 0.03 }}>
+          <motion.div key={c.key} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 8) * 0.03 }}>
             <Link href={hrefFor(c)} className="flex items-center gap-3.5 border-b border-slate-100 px-4 py-3.5 transition-colors last:border-0 hover:bg-slate-50/70">
-              <Avatar id={c.userId} name={c.name} />
+              <Avatar id={c.other || c.key} name={c.name} />
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline justify-between gap-2">
-                  <h3 className={`truncate text-sm text-ink ${c.unread ? 'font-extrabold' : 'font-bold'}`}>{c.name}</h3>
+                  <h3 className={`truncate text-sm text-ink ${c.unread ? 'font-extrabold' : 'font-bold'}`}>
+                    {c.name}
+                    {c.orderRef && <span className="ml-2 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-slate-600">#{c.orderRef}</span>}
+                  </h3>
                   <span className={`shrink-0 text-[11px] ${c.unread ? 'font-bold text-[#FA3728]' : 'text-slate-500'}`}>{listStamp(c.last.created_at)}</span>
                 </div>
                 <div className="mt-0.5 flex items-center justify-between gap-2">

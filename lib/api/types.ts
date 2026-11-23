@@ -236,6 +236,18 @@ export type OrderStatus =
 
 export type ShippingType = 'pickup' | 'delivery';
 
+export type WorkflowStepState = 'done' | 'current' | 'upcoming';
+
+/** From OrderSerializer.workflow (commerce/workflow.py). `actions` is what the current user may do right now. */
+export interface OrderWorkflow {
+  role: 'customer' | 'vendor' | 'viewer';
+  current: string | null;
+  waiting_on: 'customer' | 'vendor' | null;
+  steps: { key: string; label: string; owner: 'customer' | 'vendor' | 'system'; state: WorkflowStepState }[];
+  actions: string[];
+  blocked_reason: string | null;
+}
+
 export interface Order {
   id: string;
   customer: string;
@@ -244,6 +256,8 @@ export interface Order {
   /** The seller's USER id (chat recipient). `vendor` is the VendorProfile id. Present once the backend serializer is deployed. */
   vendor_user_id?: string;
   customer_name?: string;
+  /** Step tracker and allowed actions for the signed-in user. Present once the commerce serializers are deployed. */
+  workflow?: OrderWorkflow;
   status: OrderStatus;
   shipping_type: ShippingType | null;
   shipping_address: string | null;
@@ -505,7 +519,15 @@ export interface SendMessageRequest {
 export interface Notification {
   id: number;
   recipient: string;
-  actor: UserProfile;
+  /** Public identity of whoever caused it. Do not render its id or username; use actor_name / message. */
+  actor: Partial<UserProfile> | null;
+  /** Business name for a vendor, person name for a customer. Never an id. Present once the backend patch is live. */
+  actor_name?: string;
+  actor_avatar?: string | null;
+  /** The finished sentence, e.g. "Ada Stores accepted your order. Please add your shipping details." */
+  message?: string;
+  count?: number;
+  data?: Record<string, unknown> | null;
   verb: string;
   target_type: string;
   target_object_id: number | null;

@@ -14,6 +14,7 @@ interface OrderConversationProps {
   onConvErrorChange: (value: string) => void;
   onBack: () => void;
   onStartDelivery: (orderId: string) => void;
+  onConfirmHandover: (orderId: string, code: string) => void;
   onAccept: (orderId: string) => void;
   onModify: (orderId: string) => void;
   onReject: (orderId: string) => void;
@@ -74,6 +75,7 @@ export default function OrderConversation({
   onConvErrorChange,
   onBack,
   onStartDelivery,
+  onConfirmHandover,
   onAccept,
   onModify,
   onReject,
@@ -83,6 +85,7 @@ export default function OrderConversation({
 }: OrderConversationProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [fee, setFee] = useState(SUGGESTED_SHIPPING_FEE);
+  const [code, setCode] = useState('');
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -105,7 +108,7 @@ export default function OrderConversation({
           <p className="text-xs text-slate-500">Buyer</p>
         </div>
         <Link
-          href={`/dashboard/messages/${order.customerId}?name=${encodeURIComponent(order.name)}`}
+          href={`/dashboard/messages/order/${order.id}`}
           className="rounded-full bg-slate-100 px-3 py-1.5 text-[11px] font-bold text-slate-700 hover:bg-slate-200"
         >
           Full chat
@@ -229,7 +232,17 @@ export default function OrderConversation({
             </div>
           )}
 
-          {(status === 'awaiting_shipping_details' || status === 'shipping_set') && (
+          {status === 'awaiting_shipping_details' && (
+            <p className="rounded-full bg-amber-50 py-2.5 text-center text-xs font-semibold text-amber-700">
+              Waiting for the buyer to add delivery details. You can set the fee after that.
+            </p>
+          )}
+
+          {status === 'pending_customer_approval' && (
+            <p className="rounded-full bg-amber-50 py-2.5 text-center text-xs font-semibold text-amber-700">Waiting for the buyer to approve your changes</p>
+          )}
+
+          {status === 'shipping_set' && (
             <div className="flex items-center gap-2">
               <input
                 type="number"
@@ -256,7 +269,24 @@ export default function OrderConversation({
           )}
 
           {status === 'shipped' && (
-            <p className="rounded-full bg-blue-50 py-2.5 text-center text-xs font-semibold text-blue-700">Awaiting the buyer to confirm delivery</p>
+            <div className="flex items-center gap-2">
+              <input
+                inputMode="numeric"
+                maxLength={12}
+                value={code}
+                onChange={(e) => setCode(e.target.value.trim())}
+                placeholder="Buyer's delivery code"
+                aria-label="Buyer's delivery code"
+                className="w-full rounded-full border border-slate-200 px-4 py-2.5 text-sm font-semibold tracking-widest text-ink outline-none focus:border-ink"
+              />
+              <button
+                onClick={() => onConfirmHandover(order.id, code)}
+                disabled={!code}
+                className="flex shrink-0 items-center justify-center gap-1.5 rounded-full bg-[#FA3728] px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-[#E31B23] disabled:opacity-40"
+              >
+                <CheckCircle2 size={15} /> Confirm handover
+              </button>
+            </div>
           )}
 
           {status === 'disputed' && (
