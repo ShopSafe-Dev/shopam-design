@@ -20,11 +20,14 @@ export default function PaymentStep({ orderId, amount, onPaid }: { orderId: stri
   const [phase, setPhase] = useState<Phase>('idle');
   const [error, setError] = useState('');
   const alive = useRef(true);
+  const ready = useRef(false);
+  const watchdog = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     alive.current = true;
     return () => {
       alive.current = false;
+      if (watchdog.current) clearTimeout(watchdog.current);
     };
   }, []);
 
@@ -48,21 +51,33 @@ export default function PaymentStep({ orderId, amount, onPaid }: { orderId: stri
   const start = async () => {
     setError('');
     setPhase('opening');
+    ready.current = false;
     try {
       const prep = await payApi.prepare(orderId);
+      // If Monnify's modal never reports ready (bad keys, blocked frame), stop the spinner and say so.
+      watchdog.current = setTimeout(() => {
+        if (!alive.current || ready.current) return;
+        setPhase((p) => (p === 'opening' || p === 'open' ? 'idle' : p));
+        setError('The payment window did not appear. Check that your Monnify keys are correct, or pay in a new tab.');
+      }, 12000);
       await openMonnify(prep, {
+        onReady: () => {
+          ready.current = true;
+          if (watchdog.current) clearTimeout(watchdog.current);
+          setPhase((p) => (p === 'opening' ? 'open' : p));
+        },
         onComplete: () => void waitForWebhook(),
         // Closing the modal before paying just returns to the button. A payment that completed anyway is
         // picked up by the order polling below or by reopening this page.
         onClose: () => setPhase((p) => (p === 'confirming' ? p : 'idle')),
       });
-      setPhase((p) => (p === 'opening' ? 'open' : p));
     } catch (e) {
+      if (watchdog.current) clearTimeout(watchdog.current);
       const err = e as { response?: { status?: number; data?: { error?: string } }; message?: string };
       setPhase('idle');
       if (err.response?.status === 409) setError(err.response.data?.error || 'This order is not ready for payment yet.');
       else if (err.response?.data?.error) setError(err.response.data.error);
-      else setError('Could not open the payment window. Check your connection and try again, or use the new tab option.');
+      else setError(`${err.message || 'Could not open the payment window.'} Try again, or pay in a new tab.`);
     }
   };
 
@@ -102,7 +117,7 @@ export default function PaymentStep({ orderId, amount, onPaid }: { orderId: stri
     );
   }
 
-  const busy = phase === 'opening' || phase === 'open';
+  const busy = phase === 'opening';
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-bold text-ink">Payment</h2>
@@ -115,7 +130,7 @@ export default function PaymentStep({ orderId, amount, onPaid }: { orderId: stri
         className="flex w-full items-center justify-center gap-2 rounded-full bg-[#FA3728] py-3.5 text-sm font-bold text-white transition-colors hover:bg-[#E31B23] disabled:opacity-60"
       >
         {busy ? <Loader2 size={18} className="animate-spin" /> : <Lock size={15} />}
-        {busy ? 'Opening payment window' : `Pay ${money(amount)}`}
+        {busy ? 'Opening payment window' : phase === 'open' ? 'Reopen payment window' : `Pay ${money(amount)}`}
       </button>
 
       <button onClick={() => void newTab()} className="flex w-full items-center justify-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-ink">

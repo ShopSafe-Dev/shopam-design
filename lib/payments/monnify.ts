@@ -37,11 +37,21 @@ export function loadMonnifySdk(): Promise<void> {
       const s = document.createElement('script');
       s.src = SDK_URL;
       s.async = true;
-      s.onload = () => (window.MonnifySDK ? resolve() : reject(new Error('Monnify SDK did not initialise')));
-      s.onerror = () => {
+      const fail = (msg: string) => {
         loading = null;
         s.remove();
-        reject(new Error('Could not load the payment window'));
+        reject(new Error(msg));
+      };
+      // Never wait forever: an ad blocker, firewall or CSP can leave the request hanging.
+      const timer = setTimeout(() => fail('The payment window took too long to load'), 12000);
+      s.onload = () => {
+        clearTimeout(timer);
+        if (window.MonnifySDK) resolve();
+        else fail('Monnify SDK loaded but did not initialise');
+      };
+      s.onerror = () => {
+        clearTimeout(timer);
+        fail('Could not load the payment window (blocked or offline)');
       };
       document.head.appendChild(s);
     });
@@ -61,9 +71,18 @@ export interface PrepareResult {
 }
 
 /** Opens the modal. `onComplete` only means "the customer finished"; the order is paid when the webhook says so. */
-export async function openMonnify(p: PrepareResult, cb: { onComplete: () => void; onClose: () => void }): Promise<void> {
+export async function openMonnify(
+  p: PrepareResult,
+  cb: { onComplete: () => void; onClose: () => void; onReady?: () => void }
+): Promise<void> {
   await loadMonnifySdk();
+  console.info('[pay] Monnify SDK loaded, opening modal', { reference: p.tx_ref, amount: p.amount, contract: p.contract_code, keyPrefix: String(p.api_key).slice(0, 8) });
   window.MonnifySDK!.initialize({
+    onLoadStart: () => console.info('[pay] modal loading'),
+    onLoadComplete: () => {
+      console.info('[pay] modal ready');
+      cb.onReady?.();
+    },
     amount: p.amount,
     currency: p.currency,
     reference: p.tx_ref,
