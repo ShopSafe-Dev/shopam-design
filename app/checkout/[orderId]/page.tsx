@@ -118,15 +118,8 @@ export default function CheckoutPage() {
     }
   };
 
+  // PaymentStep calls this only after the webhook has moved the order out of awaiting_payment.
   const handlePaid = async () => {
-    try {
-      await ordersService.paymentDecision(orderId, { action: 'pay' });
-    } catch (e) {
-      const err = e as { response?: { status?: number; data?: { error?: string } } };
-      setError(err.response?.data?.error || 'Payment could not be completed. Please try again.');
-      await load(true);
-      return;
-    }
     setStep('done');
     await load(true);
     window.dispatchEvent(new Event('shopam:cart-updated'));
