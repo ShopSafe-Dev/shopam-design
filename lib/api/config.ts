@@ -1,6 +1,7 @@
-import axios, { AxiosError, AxiosInstance } from 'axios';
+import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import { ensureDevSession } from '../devAuth';
 import { clearUser } from '../auth/session';
+import { clearAccessToken, getValidAccessToken, refreshAccessToken } from '../auth/token';
 import { API_BASE_URL, API_IS_CROSS_ORIGIN } from './env';
 
 // Base URL comes from env (see lib/api/env.ts). Empty = same-origin Next.js proxy.
@@ -10,22 +11,64 @@ export { API_BASE_URL };
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000, // 30 seconds
-  // Only needed when calling the backend directly (cookie session across origins).
+  // Needed when calling the backend directly (refresh cookie across origins).
   withCredentials: API_IS_CROSS_ORIGIN,
 });
 
 // Dev-only: set the role hint cookie for the dev auth bypass.
 ensureDevSession();
 
-// Session = HttpOnly cookie set by the backend (auth_session). The browser sends it
-// automatically through the same-origin proxy; no token is read, stored or attached here.
-// The backend rotates tokens itself, so there is no client-side refresh flow.
+// Auth model: the short-lived access token is held in memory (lib/auth/token.ts) and sent as
+// `Authorization: Bearer`. The long-lived refresh token is an HttpOnly cookie that only the
+// refresh endpoint reads. A 401 triggers one refresh and one retry.
+const NO_AUTH_PATHS = [
+  API_ENDPOINTS_PREFIX('login'),
+  API_ENDPOINTS_PREFIX('logout'),
+  API_ENDPOINTS_PREFIX('token/refresh'),
+  API_ENDPOINTS_PREFIX('register/'),
+  API_ENDPOINTS_PREFIX('password/forgot'),
+  API_ENDPOINTS_PREFIX('password/reset'),
+  API_ENDPOINTS_PREFIX('user-verify'),
+];
+
+function API_ENDPOINTS_PREFIX(p: string) {
+  return `/api/accounts/${p}`;
+}
+
+function skipsAuth(url?: string): boolean {
+  if (!url) return false;
+  return NO_AUTH_PATHS.some((p) => url.startsWith(p));
+}
+
+apiClient.interceptors.request.use(async (config) => {
+  if (skipsAuth(config.url)) return config;
+  const token = await getValidAccessToken();
+  if (token) config.headers.set('Authorization', `Bearer ${token}`);
+  return config;
+});
+
+type RetryConfig = InternalAxiosRequestConfig & { _retried?: boolean };
+
 apiClient.interceptors.response.use(
   (response) => response,
-  (error: AxiosError<{ code?: string }>) => {
-    // Backend answers 401 {code: "SESSION_INVALID"} when the cookie session is missing/expired.
-    // Drop the cached user; callers/guards decide whether to prompt sign-in (no forced redirect).
-    if (error.response?.status === 401 && error.response.data?.code === 'SESSION_INVALID') {
+  async (error: AxiosError<{ code?: string }>) => {
+    const original = error.config as RetryConfig | undefined;
+    const code = error.response?.data?.code;
+    const unauthorized =
+      error.response?.status === 401 && (code === 'SESSION_INVALID' || code === 'TOKEN_EXPIRED');
+
+    if (unauthorized && original && !original._retried && !skipsAuth(original.url)) {
+      original._retried = true;
+      clearAccessToken();
+      const token = await refreshAccessToken();
+      if (token) {
+        original.headers.set('Authorization', `Bearer ${token}`);
+        return apiClient(original);
+      }
+    }
+    // No session left (or refresh refused): drop the cached user. Guards decide whether to prompt sign-in.
+    if (unauthorized) {
+      clearAccessToken();
       clearUser();
     }
     return Promise.reject(error);
@@ -49,7 +92,8 @@ export const API_ENDPOINTS = {
     RESET_PASSWORD: '/api/accounts/password/reset',
     VERIFY_EMAIL: '/api/accounts/user-verify',
     TOKEN_REFRESH: '/api/accounts/token/refresh',
-    VENDOR_PROFILE_UPDATE: '/api/accounts/path/vendor-update',
+    VENDOR_LOGO: '/api/accounts/vendor/logo',
+    VENDOR_PROFILE_UPDATE: '/api/accounts/profile/vendor-update',
   },
 
   // Products

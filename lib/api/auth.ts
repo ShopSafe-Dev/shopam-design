@@ -1,7 +1,7 @@
 import apiClient, { API_ENDPOINTS } from './config';
 import { DEV_AUTH_BYPASS, DEV_USER } from '../devAuth';
 import { getState, setUser, clearUser } from '../auth/session';
-import { clearMode } from '../auth/mode';
+import { clearAccessToken, setAccessToken } from '../auth/token';
 import type {
   UserRegister,
   VendorRegister,
@@ -49,10 +49,11 @@ export const authService = {
       ? { email: (data as any).username, password: data.password }
       : data;
     const response = await apiClient.post<any>(API_ENDPOINTS.AUTH.LOGIN, payload);
-    // The backend middleware moves the JWTs into an HttpOnly cookie and strips them from
-    // the body, so only the user comes back. Nothing secret is stored here.
+    // Body carries { user, access }. The access token stays in memory; the refresh token is an
+    // HttpOnly cookie set by the backend and never visible here.
     const raw = response.data;
     const user: UserProfile = raw.user ?? raw;
+    setAccessToken(raw.access);
     setUser(user);
     return { access: '', refresh: '', user };
   },
@@ -60,18 +61,23 @@ export const authService = {
 
   async logout(): Promise<void> {
     try {
-      // Backend deletes the Redis session + cookie.
+      // Backend blacklists this device's refresh token and clears the cookie.
       await apiClient.post(API_ENDPOINTS.AUTH.LOGOUT);
     } finally {
+      clearAccessToken();
       clearUser();
-      clearMode();
     }
   },
 
 
   async changePassword(data: PasswordChangeRequest): Promise<void> {
     // The spec marks old_password1 as required alongside old_password; send the same value.
-    await apiClient.post(API_ENDPOINTS.AUTH.PASSWORD_CHANGE, { old_password1: data.old_password, ...data });
+    const res = await apiClient.post<{ access?: string }>(API_ENDPOINTS.AUTH.PASSWORD_CHANGE, {
+      old_password1: data.old_password,
+      ...data,
+    });
+    // Every other device was signed out; this one gets a fresh token pair.
+    if (res.data?.access) setAccessToken(res.data.access);
   },
 
   /**
@@ -96,7 +102,7 @@ export const authService = {
   },
 
   /**
-   * Resolve the signed-in user from the cookie session via GET /api/accounts/profile.
+   * Resolve the signed-in user (refreshing the access token first if needed) via GET /api/accounts/profile.
    * Deduplicated; resolves null for guests. Pass { force: true } to re-check the server.
    */
   async ensureUser(opts?: { force?: boolean }): Promise<UserProfile | null> {
@@ -190,6 +196,19 @@ export const authService = {
     return { user, vendor_profile };
   },
 
+  /** Upload (or replace) the vendor logo. Returns the vendor profile with a signed logo URL. */
+  async uploadVendorLogo(file: File): Promise<VendorProfile> {
+    const form = new FormData();
+    form.append('logo', file);
+    const res = await apiClient.post<VendorProfile>(API_ENDPOINTS.AUTH.VENDOR_LOGO, form);
+    return res.data;
+  },
+
+  async removeVendorLogo(): Promise<VendorProfile> {
+    const res = await apiClient.delete<VendorProfile>(API_ENDPOINTS.AUTH.VENDOR_LOGO);
+    return res.data;
+  },
+
   /**
    * Partially update the authenticated user's profile
    */
@@ -207,7 +226,7 @@ export const authService = {
    */
   async deactivateAccount(): Promise<void> {
     await apiClient.delete(API_ENDPOINTS.AUTH.PROFILE_DEACTIVATE);
+    clearAccessToken();
     clearUser();
-    clearMode();
   },
 };

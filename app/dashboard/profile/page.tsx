@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { ImagePlus, Loader2, MapPin, Package, Plus, X } from 'lucide-react';
+import { Camera, ImagePlus, Loader2, MapPin, Package, Plus, X } from 'lucide-react';
 import Link from 'next/link';
-import { postsService, productsService } from '@/lib/api';
+import { authService, postsService, productsService } from '@/lib/api';
 import { useVendorProfile } from '@/lib/vendor/useVendorProfile';
 import BusinessCover from '@/app/components/BusinessCover';
 import type { ProductService } from '@/lib/api';
@@ -30,6 +30,40 @@ export default function VendorProfilePage() {
   const [posts, setPosts] = useState<FeedPost[]>(FEED_POSTS.slice(0, 3));
   const [tab, setTab] = useState<Tab>('products');
   const [postOpen, setPostOpen] = useState(false);
+  const logoInput = useRef<HTMLInputElement>(null);
+  const [logoBusy, setLogoBusy] = useState(false);
+  const [logoError, setLogoError] = useState('');
+
+  async function onLogoPicked(e: ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (!f) return;
+    setLogoError('');
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(f.type)) return setLogoError('Use a JPEG, PNG or WebP image.');
+    if (f.size > 5 * 1024 * 1024) return setLogoError('Logo must be 5MB or smaller.');
+    setLogoBusy(true);
+    try {
+      await authService.uploadVendorLogo(f);
+      reload();
+    } catch (err: any) {
+      setLogoError(err?.response?.data?.logo?.[0] ?? err?.response?.data?.error ?? 'Could not upload the logo.');
+    } finally {
+      setLogoBusy(false);
+    }
+  }
+
+  async function onLogoRemove() {
+    setLogoError('');
+    setLogoBusy(true);
+    try {
+      await authService.removeVendorLogo();
+      reload();
+    } catch {
+      setLogoError('Could not remove the logo.');
+    } finally {
+      setLogoBusy(false);
+    }
+  }
 
   useEffect(() => {
     productsService.getMyProducts().then((r) => setProducts(Array.isArray(r) ? r : [])).catch(() => {});
@@ -51,14 +85,34 @@ export default function VendorProfilePage() {
             <BusinessCover name={profile.name} className="h-36 sm:h-48" />
           )}
           <div className="relative px-4 pb-4 sm:px-6">
-            <div className="-mt-10 flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border-4 border-white bg-ink text-2xl font-black text-white shadow-md sm:h-24 sm:w-24">
-              {profile.logo ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={profile.logo} alt={`${profile.name} logo`} className="h-full w-full object-cover" />
-              ) : (
-                (profile.name || ' ').charAt(0).toUpperCase()
-              )}
+            <div className="relative -mt-10 h-20 w-20 sm:h-24 sm:w-24">
+              <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-2xl border-4 border-white bg-ink text-2xl font-black text-white shadow-md">
+                {profile.logo ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={profile.logo} alt={`${profile.name} logo`} className="h-full w-full object-cover" />
+                ) : (
+                  (profile.name || ' ').charAt(0).toUpperCase()
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => logoInput.current?.click()}
+                disabled={logoBusy}
+                aria-label="Change logo"
+                className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full bg-white text-ink shadow ring-1 ring-slate-200 hover:bg-slate-50 disabled:opacity-60"
+              >
+                {logoBusy ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
+              </button>
+              <input ref={logoInput} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={onLogoPicked} />
             </div>
+            {(logoError || profile.logo) && (
+              <p className="mt-2 text-xs">
+                {logoError && <span className="font-medium text-red-600">{logoError} </span>}
+                {profile.logo && !logoBusy && (
+                  <button type="button" onClick={onLogoRemove} className="font-semibold text-slate-500 underline hover:text-red-600">Remove logo</button>
+                )}
+              </p>
+            )}
             <div className="mt-3 flex items-center gap-2">
               {profileLoading ? (
                 <div className="h-7 w-44 animate-pulse rounded bg-slate-100" />

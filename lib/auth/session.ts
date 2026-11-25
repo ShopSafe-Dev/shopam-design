@@ -1,9 +1,8 @@
 import type { UserProfile } from '../api/types';
 
 /**
- * Tiny in-memory user store. The session itself lives in the backend's HttpOnly
- * cookie (auth_session), which JS cannot read, so NO access/refresh token is ever
- * stored in the browser. The server (GET /api/accounts/profile) is the source of truth;
+ * Tiny in-memory user store. Tokens are NOT kept here: the access token lives in
+ * lib/auth/token.ts (memory only) and the refresh token is an HttpOnly cookie JS cannot read. The server (GET /api/accounts/profile) is the source of truth;
  * this store only caches the profile it returns.
  *
  * status:
