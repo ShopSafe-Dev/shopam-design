@@ -21,7 +21,7 @@ import {
   User,
 } from 'lucide-react';
 import { productsService, cartService, reviewsService } from '@/lib/api';
-import type { ProductService, Review } from '@/lib/api/types';
+import type { AddOn, ProductService, ProductVariant, Review } from '@/lib/api/types';
 import AppHeader from '../../components/AppHeader';
 import ProductCard from '../../explore/components/ProductCard';
 import BottomNav from '../../components/BottomNav';
@@ -127,6 +127,9 @@ export default function ProductDetailPage() {
 
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
+  const [variantId, setVariantId] = useState<string | null>(null);
+  const [addonIds, setAddonIds] = useState<string[]>([]);
+  const [cartError, setCartError] = useState('');
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [addedToCart, setAddedToCart] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
@@ -169,20 +172,40 @@ export default function ProductDetailPage() {
     };
   }, [id]);
 
-  const addToCart = async (item: ProductService, qty = 1) => {
-    await cartService.addToCart({ product_id: item.id, quantity: qty, product: item });
+  const addToCart = async (item: ProductService, qty = 1, opts?: { variant?: ProductVariant | null; addons?: AddOn[] }) => {
+    await cartService.addToCart({
+      product_id: item.id,
+      quantity: qty,
+      product: item,
+      variant_id: opts?.variant?.id ?? null,
+      variantDetails: opts?.variant ?? null,
+      addon_ids: (opts?.addons ?? []).map((a) => a.id),
+      addonDetails: opts?.addons ?? [],
+    });
     window.dispatchEvent(new Event('shopam:cart-updated'));
   };
 
   const handleAddToCart = async () => {
     if (!product) return;
+    const variants = product.variants ?? [];
+    const variant = variants.find((v) => v.id === variantId) ?? null;
+    if (variants.length && !variant) {
+      setCartError('Choose an option first.');
+      return;
+    }
+    if (variant && !variant.in_stock) {
+      setCartError('That option is out of stock.');
+      return;
+    }
+    setCartError('');
     setIsAddingToCart(true);
     try {
-      await addToCart(product, quantity);
+      await addToCart(product, quantity, { variant, addons: product.addons.filter((a) => addonIds.includes(a.id)) });
       setAddedToCart(true);
       setTimeout(() => setAddedToCart(false), 2500);
-    } catch {
-      // cart errors surface elsewhere
+    } catch (err) {
+      const data = (err as { response?: { data?: { error?: string } } })?.response?.data;
+      setCartError(data?.error ?? 'Could not add to cart. Try again.');
     } finally {
       setIsAddingToCart(false);
     }
@@ -233,8 +256,26 @@ export default function ProductDetailPage() {
   }
 
   /* ── Derived data ── */
-  const images = product.images ?? [];
-  const price = parseFloat(product.price) || 0;
+  // A selected variant's own pictures come first in the gallery.
+  const variantPics = (product.variants ?? []).find((v) => v.id === variantId)?.images ?? [];
+  const images = [...variantPics, ...(product.images ?? [])];
+  const variants = product.variants ?? [];
+  const selectedVariant = variants.find((v) => v.id === variantId) ?? null;
+  const selectedAddons = product.addons.filter((a) => addonIds.includes(a.id));
+  const basePrice = selectedVariant?.price_override != null ? parseFloat(selectedVariant.price_override) : parseFloat(product.price) || 0;
+  const price = basePrice + selectedAddons.reduce((sum, a) => sum + (parseFloat(a.price) || 0), 0);
+  // Attribute names across variants (size, color, ...) so we can show one picker row per attribute.
+  const attrNames = Array.from(new Set(variants.flatMap((v) => Object.keys(v.attributes ?? {}))));
+  const pickAttr = (name: string, value: string) => {
+    const current = selectedVariant?.attributes ?? {};
+    const want = { ...current, [name]: value };
+    const exact = variants.find((v) => attrNames.every((n) => (want[n] ?? '') === (v.attributes?.[n] ?? '')));
+    const partial = variants.find((v) => v.attributes?.[name] === value && Object.entries(current).every(([k, val]) => k === name || v.attributes?.[k] === val));
+    const next = exact ?? partial ?? variants.find((v) => v.attributes?.[name] === value);
+    setVariantId(next?.id ?? null);
+    setSelectedImage(0);
+    setCartError('');
+  };
   const mainImageUrl = images[selectedImage]?.image_url ?? null;
   const ratingCount = reviews.length || parseInt(product.review_count || '0', 10) || 0;
   const rating =
@@ -422,6 +463,76 @@ export default function ProductDetailPage() {
               </p>
             </div>
 
+            {/* Options (variants) */}
+            {variants.length > 0 && (
+              <div className="mt-5 space-y-4">
+                {attrNames.map((name) => {
+                  const values = Array.from(new Set(variants.map((v) => v.attributes?.[name]).filter((x): x is string => !!x)));
+                  return (
+                    <div key={name}>
+                      <p className="mb-2 text-xs font-semibold capitalize text-slate-600">
+                        {name}
+                        {selectedVariant?.attributes?.[name] && <span className="ml-1.5 font-bold text-ink">{selectedVariant.attributes[name]}</span>}
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {values.map((val) => {
+                          const active = selectedVariant?.attributes?.[name] === val;
+                          const anyInStock = variants.some((v) => v.attributes?.[name] === val && v.in_stock);
+                          return (
+                            <button
+                              key={val}
+                              type="button"
+                              onClick={() => pickAttr(name, val)}
+                              aria-pressed={active}
+                              className={`rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
+                                active ? 'border-ink bg-ink text-white' : anyInStock ? 'border-slate-200 text-ink hover:border-ink' : 'border-slate-200 text-slate-400 line-through'
+                              }`}
+                            >
+                              {val}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+                {selectedVariant && !selectedVariant.in_stock && (
+                  <p className="text-xs font-semibold text-red-600">This option is out of stock.</p>
+                )}
+              </div>
+            )}
+
+            {/* Add-ons */}
+            {product.addons.length > 0 && (
+              <div className="mt-5">
+                <p className="mb-2 text-xs font-semibold text-slate-600">Add-ons</p>
+                <div className="space-y-2">
+                  {product.addons.map((a) => {
+                    const on = addonIds.includes(a.id);
+                    return (
+                      <label key={a.id} className={`flex cursor-pointer items-start gap-3 rounded-2xl border px-3.5 py-3 transition-colors ${on ? 'border-ink bg-slate-50' : 'border-slate-200 hover:border-slate-300'}`}>
+                        <input
+                          type="checkbox"
+                          checked={on}
+                          onChange={() => setAddonIds((ids) => (on ? ids.filter((x) => x !== a.id) : [...ids, a.id]))}
+                          className="mt-1"
+                        />
+                        {a.images?.[0] && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={a.images[0].image_url} alt="" className="h-12 w-12 shrink-0 rounded-lg object-cover" />
+                        )}
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-sm font-semibold text-ink">{a.title}</span>
+                          {a.description && <span className="block text-xs text-slate-500">{a.description}</span>}
+                        </span>
+                        <span className="shrink-0 text-sm font-bold text-ink">+₦{(parseFloat(a.price) || 0).toLocaleString()}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Quantity + Add to cart */}
             <div className="mt-6 flex items-center gap-3">
               <div className="flex items-center rounded-full border border-slate-200 bg-white px-1.5 py-1.5">
@@ -453,6 +564,8 @@ export default function ProductDetailPage() {
                 {isAddingToCart ? 'Adding…' : addedToCart ? 'Added to cart' : 'Add to cart'}
               </button>
             </div>
+
+            {cartError && <p role="alert" className="mt-3 text-sm font-medium text-red-600">{cartError}</p>}
 
             {/* Trust line */}
             <div className="mt-4 flex items-center gap-5 text-xs text-slate-500">

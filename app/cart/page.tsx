@@ -192,10 +192,10 @@ export default function CartPage() {
                   {subcart.items.map((item) => (
                     <div key={item.id} className="flex items-start gap-3.5 p-4">
                       <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-slate-100">
-                        {item.product_details?.images?.[0]?.image_url ? (
+                        {(item.variant_details?.images?.[0]?.image_url ?? item.product_details?.images?.[0]?.image_url) ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
-                            src={item.product_details.images[0].image_url}
+                            src={item.variant_details?.images?.[0]?.image_url ?? item.product_details.images[0].image_url}
                             alt={item.product_details.title}
                             className="h-full w-full object-cover"
                           />
@@ -208,6 +208,12 @@ export default function CartPage() {
 
                       <div className="min-w-0 flex-1">
                         <h4 className="line-clamp-2 text-sm font-semibold text-ink">{item.product_details.title}</h4>
+                        {item.variant_details?.label && (
+                          <p className="mt-0.5 text-xs font-medium text-slate-600">{item.variant_details.label}</p>
+                        )}
+                        {item.addon_details?.length > 0 && (
+                          <p className="mt-0.5 text-xs text-slate-500">+ {item.addon_details.map((a) => a.title).join(', ')}</p>
+                        )}
                         <p className="mt-1 text-sm font-bold text-[#FA3728]">{money(parseFloat(item.total_price))}</p>
 
                         <div className="mt-2.5 flex items-center justify-between">

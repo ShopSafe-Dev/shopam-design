@@ -9,6 +9,7 @@ import Modal from '../components/Modal';
 import Field from '../components/Field';
 import ProductCard from './ProductCard';
 import ProductFormModal from './ProductFormModal';
+import ProductOptionsModal from './ProductOptionsModal';
 import { apiError, buildTree, formatPrice, type CatNode, type UIProduct } from './product-form';
 
 type TypeFilter = 'all' | 'product' | 'service';
@@ -30,6 +31,7 @@ export default function ProductsPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<UIProduct | null>(null);
 
+  const [optionsFor, setOptionsFor] = useState<UIProduct | null>(null);
   const [stockFor, setStockFor] = useState<UIProduct | null>(null);
   const [stockValue, setStockValue] = useState('');
   const [stockBusy, setStockBusy] = useState(false);
@@ -202,10 +204,12 @@ export default function ProductsPage() {
       ) : (
         <div className="grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 lg:grid-cols-3">
           {shown.map((p) => (
-            <ProductCard key={p.id} product={p} onEdit={() => openEdit(p)} onStock={() => openStock(p)} onDelete={() => { setDeleting(p); setDeleteError(''); }} />
+            <ProductCard key={p.id} product={p} onEdit={() => openEdit(p)} onStock={() => openStock(p)} onOptions={() => setOptionsFor(p)} onDelete={() => { setDeleting(p); setDeleteError(''); }} />
           ))}
         </div>
       )}
+
+      <ProductOptionsModal product={optionsFor} onClose={() => setOptionsFor(null)} onChanged={() => void load()} />
 
       <ProductFormModal
         open={formOpen}

@@ -6,6 +6,8 @@ import type {
   CartItem,
   SubCart,
   Product,
+  ProductVariant,
+  AddOn,
   AddToCartRequest,
   UpdateCartItemRequest,
 } from './types';
@@ -22,7 +24,15 @@ import type {
 
 const GUEST_CART_KEY = 'shopam_guest_cart';
 
-type GuestLine = { product: Product; quantity: number };
+type GuestLine = { product: Product; quantity: number; variant?: ProductVariant | null; addons?: AddOn[] };
+
+/** One cart line = product + variant + add-on set. */
+const lineKey = (l: { product: Product; variant?: ProductVariant | null; addons?: AddOn[] }) =>
+  [l.product.id, l.variant?.id ?? '', (l.addons ?? []).map((a) => a.id).sort().join(',')].join('|');
+
+const unitPrice = (l: GuestLine) =>
+  (l.variant?.price_override != null ? parseFloat(l.variant.price_override) : parseFloat(l.product.price) || 0) +
+  (l.addons ?? []).reduce((sum, a) => sum + (parseFloat(a.price) || 0), 0);
 
 const isBrowser = () => typeof window !== 'undefined';
 const isAuthed = () => {
@@ -59,18 +69,20 @@ function writeGuest(lines: GuestLine[]) {
   window.dispatchEvent(new Event('shopam:cart-updated'));
 }
 
-function buildGuestItem(product: Product, quantity: number): CartItem {
+function buildGuestItem(line: GuestLine): CartItem {
+  const { product, quantity } = line;
   const vendorId = product.owner || 'vendor';
   return {
-    id: `guest-item-${product.id}`,
+    id: `guest-item-${lineKey(line)}`,
     subcart: `guest-subcart-${vendorId}`,
     product: product.id,
     product_details: product,
     quantity,
-    variant: null,
-    selected_addons: [],
-    addon_details: [],
-    total_price: String((parseFloat(product.price) || 0) * quantity),
+    variant: line.variant?.id ?? null,
+    variant_details: line.variant ?? null,
+    selected_addons: (line.addons ?? []).map((a) => a.id),
+    addon_details: line.addons ?? [],
+    total_price: String(unitPrice(line) * quantity),
   };
 }
 
@@ -81,7 +93,7 @@ function toGuestCart(lines: GuestLine[]): Cart {
     const vendorId = line.product.owner || 'vendor';
     const vendorName = line.product.owner_name || 'ShopSafe Vendor';
     if (!groups.has(vendorId)) groups.set(vendorId, { vendorName, items: [] });
-    groups.get(vendorId)!.items.push(buildGuestItem(line.product, line.quantity));
+    groups.get(vendorId)!.items.push(buildGuestItem(line));
   }
 
   const subcarts: SubCart[] = [...groups.entries()].map(([vendorId, group]) => ({
@@ -107,6 +119,8 @@ async function mergeGuestCart(): Promise<void> {
       await apiClient.post(API_ENDPOINTS.CART.ADD, {
         product_id: line.product.id,
         quantity: line.quantity,
+        variant_id: line.variant?.id ?? null,
+        addon_ids: (line.addons ?? []).map((a) => a.id),
       });
     }
     writeGuest([]);
@@ -136,16 +150,29 @@ export const cartService = {
    * Add an item. Pass `product` so the guest cart can render without a server
    * round-trip; signed-in users only need `product_id`.
    */
-  async addToCart(data: AddToCartRequest & { product?: Product }): Promise<CartItem | void> {
+  async addToCart(
+    data: AddToCartRequest & { product?: Product; variantDetails?: ProductVariant | null; addonDetails?: AddOn[] }
+  ): Promise<CartItem | void> {
+    const variantId = data.variant_id ?? data.variant ?? null;
+
+    // A product with options cannot be added blindly (e.g. from a listing card): send the shopper to choose.
+    if (data.product?.variants?.length && !variantId) {
+      if (isBrowser()) window.location.assign(`/products/${data.product.id}`);
+      return;
+    }
+
     if (!serverCartEnabled()) {
       if (!data.product) return; // nothing to snapshot — ignore for guests
       const quantity = data.quantity ?? 1;
+      const variant = variantId ? (data.variantDetails ?? data.product.variants?.find((v) => v.id === variantId) ?? null) : null;
+      const addons = data.addonDetails ?? (data.addon_ids ?? []).map((id) => data.product!.addons.find((a) => a.id === id)).filter((a): a is AddOn => !!a);
+      const candidate: GuestLine = { product: data.product, quantity, variant, addons };
       const lines = readGuest();
-      const existing = lines.find((line) => line.product.id === data.product!.id);
+      const existing = lines.find((line) => lineKey(line) === lineKey(candidate));
       if (existing) {
         existing.quantity += quantity;
       } else {
-        lines.push({ product: data.product, quantity });
+        lines.push(candidate);
       }
       writeGuest(lines);
       return;
@@ -154,17 +181,17 @@ export const cartService = {
     const response = await apiClient.post<CartItem>(API_ENDPOINTS.CART.ADD, {
       product_id: data.product_id,
       quantity: data.quantity ?? 1,
-      variant: data.variant ?? null,
-      addon_ids: data.addon_ids,
+      variant_id: variantId,
+      addon_ids: data.addon_ids ?? [],
     });
     return response.data;
   },
 
   async updateCartItem(id: string, data: UpdateCartItemRequest): Promise<CartItem> {
     if (!serverCartEnabled()) {
-      const productId = id.replace('guest-item-', '');
+      const key = id.replace('guest-item-', '');
       const lines = readGuest();
-      const line = lines.find((entry) => entry.product.id === productId);
+      const line = lines.find((entry) => lineKey(entry) === key);
       if (line && typeof data.quantity === 'number') {
         line.quantity = Math.max(1, data.quantity);
         writeGuest(lines);
@@ -185,8 +212,8 @@ export const cartService = {
 
   async removeFromCart(id: string): Promise<void> {
     if (!serverCartEnabled()) {
-      const productId = id.replace('guest-item-', '');
-      writeGuest(readGuest().filter((line) => line.product.id !== productId));
+      const key = id.replace('guest-item-', '');
+      writeGuest(readGuest().filter((line) => lineKey(line) !== key));
       return;
     }
     await apiClient.delete(API_ENDPOINTS.CART.ITEM_DETAIL(id));

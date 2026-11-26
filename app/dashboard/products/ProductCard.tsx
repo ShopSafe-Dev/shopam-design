@@ -1,15 +1,17 @@
-import { ImageIcon, Pencil, Trash2, Boxes, Star } from 'lucide-react';
+import { ImageIcon, Pencil, Trash2, Boxes, Star, SlidersHorizontal } from 'lucide-react';
 import { formatPrice, type UIProduct } from './product-form';
 
 export default function ProductCard({
   product,
   onEdit,
   onStock,
+  onOptions,
   onDelete,
 }: {
   product: UIProduct;
   onEdit: () => void;
   onStock: () => void;
+  onOptions: () => void;
   onDelete: () => void;
 }) {
   const cover = product.images?.[0]?.image_url;
@@ -17,6 +19,8 @@ export default function ProductCard({
   const reviews = parseInt(product.review_count);
   const category = product.taxonomy_path ? product.taxonomy_path.split(/\s*(?:>|›|»|→|\/)\s*/).filter(Boolean).slice(-2).join(' › ') : '';
   const stock = product.localStock;
+  const variantCount = product.variants?.length ?? 0;
+  const addonCount = product.addons?.length ?? 0;
 
   return (
     <article className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all hover:border-slate-300 hover:shadow-md">
@@ -55,6 +59,9 @@ export default function ProductCard({
               {stock === 0 ? 'Out of stock' : `${stock} in stock`}
             </span>
           )}
+          {(variantCount > 0 || addonCount > 0) && (
+            <span>{[variantCount > 0 && `${variantCount} variant${variantCount === 1 ? '' : 's'}`, addonCount > 0 && `${addonCount} add-on${addonCount === 1 ? '' : 's'}`].filter(Boolean).join(' • ')}</span>
+          )}
           {rating > 0 && (
             <span className="flex items-center gap-1"><Star size={11} className="fill-amber-400 text-amber-400" />{rating.toFixed(1)}{reviews > 0 && ` (${reviews})`}</span>
           )}
@@ -63,6 +70,9 @@ export default function ProductCard({
         <div className="mt-auto flex gap-2 pt-3.5">
           <button onClick={onEdit} className="flex flex-1 items-center justify-center gap-1.5 rounded-full border border-slate-200 py-2 text-xs font-semibold text-ink transition-colors hover:border-ink">
             <Pencil size={12} /> Edit
+          </button>
+          <button onClick={onOptions} aria-label="Variants and add-ons" title="Variants and add-ons" className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition-colors hover:border-ink hover:text-ink">
+            <SlidersHorizontal size={14} />
           </button>
           <button onClick={onStock} aria-label="Update stock" title="Update stock" className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition-colors hover:border-ink hover:text-ink">
             <Boxes size={14} />

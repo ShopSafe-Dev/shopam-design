@@ -155,6 +155,8 @@ export interface ProductService {
   tax_inclusive: boolean;
   item_type: ItemType;
   addons: AddOn[];
+  /** Options such as size or colour. When present, buyers must choose one. */
+  variants?: ProductVariant[];
   images: ProductImage[];
   created_at: string;
   updated_at: string;
@@ -210,9 +212,26 @@ export interface CartItem {
   product_details: Product;
   quantity: number;
   variant: string | null;
+  variant_details?: ProductVariant | null;
   selected_addons: string[];
   addon_details: AddOn[];
   total_price: string;
+}
+
+export interface ProductVariant {
+  id: string;
+  product?: string;
+  /** e.g. { size: "XL", color: "Red" } */
+  attributes: Record<string, string>;
+  /** "XL / Red" */
+  label: string;
+  sku?: string | null;
+  /** Absolute price that replaces the product price. null/absent = product price. */
+  price_override?: string | null;
+  /** Exact stock, only returned to the owning vendor. */
+  stock_quantity?: number;
+  in_stock: boolean;
+  images?: { id: string; image_url: string }[];
 }
 
 export interface AddOn {
@@ -222,12 +241,16 @@ export interface AddOn {
   description?: string;
   price: string;
   tax_inclusive: boolean;
+  images?: { id: string; image_url: string }[];
   created_at?: string;
 }
 
 export interface AddToCartRequest {
   product_id: string;
   quantity?: number;
+  /** Required when the product has variants. */
+  variant_id?: string | null;
+  /** @deprecated use variant_id */
   variant?: string | null;
   addon_ids?: string[];
 }
