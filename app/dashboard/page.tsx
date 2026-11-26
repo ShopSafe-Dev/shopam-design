@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useLiveRefresh } from '@/lib/live/useLiveRefresh';
 import Link from 'next/link';
 import { ArrowRight, Package } from 'lucide-react';
 import { authService, ordersService, productsService } from '@/lib/api';
@@ -29,10 +30,17 @@ export default function VendorHomePage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<ProductService[]>([]);
 
-  useEffect(() => {
-    ordersService.getVendorOrders().then((r) => setOrders(r.results.slice(0, 3))).catch(() => {});
-    productsService.getMyProducts().then((r) => setProducts(Array.isArray(r) ? r : [])).catch(() => {});
+  const load = useCallback(async () => {
+    await Promise.all([
+      ordersService.getVendorOrders().then((r) => setOrders(r.results.slice(0, 3))).catch(() => {}),
+      productsService.getMyProducts().then((r) => setProducts(Array.isArray(r) ? r : [])).catch(() => {}),
+    ]);
   }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+  useLiveRefresh(load, { topics: ['order', 'product', 'social', 'verification'] });
 
   const user = authService.getCurrentUser();
   const firstName = user?.first_name || 'Vendor';

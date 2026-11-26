@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useLiveRefresh } from '@/lib/live/useLiveRefresh';
 import { Loader2 } from 'lucide-react';
 import { staffApi, type RevokeBasis } from '@/lib/api/endpoints/staff';
 import type * as S from '@/lib/api/openapi-types';
@@ -45,21 +46,26 @@ export default function VerificationsPage() {
   const [revokeReason, setRevokeReason] = useState('');
   const [revokeBasis, setRevokeBasis] = useState<RevokeBasis>('investigation');
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
+  const load = useCallback(async (silent = false) => {
+    if (!silent) {
+      setLoading(true);
+      setError('');
+    }
     try {
       setItems(asList<S.VendorVerification>(await staffApi.verifyVendorList({ status: view, ...(type === 'all' ? {} : { type }) })));
     } catch (err) {
-      setError(errMsg(err, 'Could not load verification requests.'));
+      if (!silent) setError(errMsg(err, 'Could not load verification requests.'));
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [type, view]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  // New submissions appear without a reload.
+  useLiveRefresh(() => load(true), { enabled: !loading && !rejecting && !revoking, topics: ['staff:verification'] });
 
   const decide = async (v: S.VendorVerification, status: 'approve' | 'reject', why?: string) => {
     setBusyId(v.id);

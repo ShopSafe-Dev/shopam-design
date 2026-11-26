@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useLiveRefresh } from '@/lib/live/useLiveRefresh';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Loader2, ShoppingBag } from 'lucide-react';
@@ -63,6 +64,15 @@ export default function ChatsListPage() {
         .finally(() => setIsLoading(false));
     });
   }, []);
+
+  // Order progress and new orders appear without a reload.
+  useLiveRefresh(
+    async () => {
+      const data = await ordersService.getOrderHistory();
+      setOrders(data.results ?? []);
+    },
+    { enabled: isAuthenticated && !isLoading, topics: ['order'] }
+  );
 
   const activeOrders = orders.filter((o) => o.status !== 'completed' && o.status !== 'cancelled');
   const pastOrders = orders.filter((o) => o.status === 'completed' || o.status === 'cancelled');

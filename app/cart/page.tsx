@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useLiveRefresh } from '@/lib/live/useLiveRefresh';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -21,16 +22,18 @@ export default function CartPage() {
   const [orderError, setOrderError] = useState('');
   const router = useRouter();
 
-  const fetchCart = async () => {
+  const fetchCart = async (silent = false) => {
     try {
-      setIsLoading(true);
+      if (!silent) setIsLoading(true);
       const data = await cartService.getCart();
       setCart(data);
+      if (silent) setError(null);
     } catch (err) {
+      if (silent) return; // keep what is on screen
       console.error('Failed to fetch cart:', err);
       setError('Could not load your cart. Please try again.');
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   };
 
@@ -40,6 +43,9 @@ export default function CartPage() {
     authService.ensureUser().then((u) => setIsGuest(!u));
     fetchCart();
   }, []);
+
+  // Prices and stock can change while the cart is open.
+  useLiveRefresh(() => fetchCart(true), { enabled: !isLoading && !placingVendor, interval: 60_000, topics: ['cart', 'product'] });
 
   const handleUpdateQuantity = async (itemId: string, currentQty: number, change: number) => {
     const newQty = Math.max(1, currentQty + change);

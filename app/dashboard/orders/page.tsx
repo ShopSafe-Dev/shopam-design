@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useLiveRefresh } from '@/lib/live/useLiveRefresh';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Search, Loader2 } from 'lucide-react';
 import { ordersService } from '@/lib/api/services';
@@ -17,6 +18,9 @@ export default function OrdersPage() {
   const [convError, setConvError] = useState('');
   const [modifyTarget, setModifyTarget] = useState<UIOrder | null>(null);
   const [rejectTarget, setRejectTarget] = useState<UIOrder | null>(null);
+
+  const selectedIdRef = useRef<string | undefined>(undefined);
+  selectedIdRef.current = selectedOrder?.id;
 
   const tabs: UIOrderStatus[] = ['All', 'Pending', 'Confirmed', 'Completed'];
 
@@ -38,6 +42,9 @@ export default function OrdersPage() {
       setIsLoading(false);
     })();
   }, [refresh]);
+
+  // New orders and status changes show up without a reload.
+  useLiveRefresh(() => refresh(selectedIdRef.current), { enabled: !isLoading, topics: ['order', 'product'] });
 
   /** Run an action, then re-read the order so the timeline reflects reality. */
   const run = async (action: () => Promise<unknown>, id: string, errorMessage: string) => {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useLiveRefresh } from '@/lib/live/useLiveRefresh';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -171,6 +172,15 @@ export default function ProductDetailPage() {
       active = false;
     };
   }, [id]);
+
+  // Stock, price and options can change while the page is open.
+  useLiveRefresh(
+    async () => {
+      if (!id) return;
+      setProduct(await productsService.getProduct(id));
+    },
+    { enabled: !loading && !!product, interval: 45_000, topics: ['product'] }
+  );
 
   const addToCart = async (item: ProductService, qty = 1, opts?: { variant?: ProductVariant | null; addons?: AddOn[] }) => {
     await cartService.addToCart({

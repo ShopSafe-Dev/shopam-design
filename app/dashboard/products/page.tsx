@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLiveRefresh } from '@/lib/live/useLiveRefresh';
 import { motion } from 'framer-motion';
 import { Loader2, Package, Plus, Search } from 'lucide-react';
 import { productsService, categoriesService } from '@/lib/api/products';
@@ -41,9 +42,11 @@ export default function ProductsPage() {
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState('');
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setLoadError('');
+  const load = useCallback(async (silent = false) => {
+    if (!silent) {
+      setLoading(true);
+      setLoadError('');
+    }
     try {
       const data = await productsService.getMyProducts();
       // Keep stock numbers learned this session: the API does not return stock.
@@ -52,11 +55,14 @@ export default function ProductsPage() {
         return (Array.isArray(data) ? data : []).map((p) => ({ ...p, localStock: known.get(p.id) }));
       });
     } catch (err) {
-      setLoadError(apiError(err, 'Could not load your products.'));
+      if (!silent) setLoadError(apiError(err, 'Could not load your products.'));
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
+
+  // Stock changes from sales show up without a reload.
+  useLiveRefresh(() => load(true), { enabled: !loading, topics: ['product'] });
 
   useEffect(() => {
     void load();
@@ -209,7 +215,7 @@ export default function ProductsPage() {
         </div>
       )}
 
-      <ProductOptionsModal product={optionsFor} onClose={() => setOptionsFor(null)} onChanged={() => void load()} />
+      <ProductOptionsModal product={optionsFor} onClose={() => setOptionsFor(null)} onChanged={() => void load(true)} />
 
       <ProductFormModal
         open={formOpen}

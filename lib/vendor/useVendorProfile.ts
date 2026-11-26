@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useLiveRefresh } from '@/lib/live/useLiveRefresh';
 import { authService } from '@/lib/api';
 import type { BankDetails, UserProfile, VendorProfile, VerificationInfo } from '@/lib/api';
 
@@ -47,16 +48,19 @@ export function useVendorProfile() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
+  /** `silent` refreshes in place (no spinner, keeps old data on failure) for live updates. */
+  const load = useCallback(async (silent = false) => {
+    if (!silent) {
+      setLoading(true);
+      setError('');
+    }
     try {
       const full = await authService.getFullProfile();
       setData(toView(full.user, full.vendor_profile));
     } catch {
-      setError('Could not load your business profile.');
+      if (!silent) setError('Could not load your business profile.');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
@@ -64,5 +68,8 @@ export function useVendorProfile() {
     void load();
   }, [load]);
 
-  return { vendor: data, loading, error, reload: load };
+  const reload = useCallback(() => load(false), [load]);
+  useLiveRefresh(() => load(true), { enabled: !loading && !!data, interval: 60_000, topics: ['verification', 'profile'] });
+
+  return { vendor: data, loading, error, reload };
 }
