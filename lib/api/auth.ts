@@ -14,6 +14,9 @@ import type {
   ForgotPasswordRequest,
   ResetPasswordRequest,
   UpdateProfileRequest,
+  Bank,
+  BankDetails,
+  BankLookup,
 } from './types';
 
 
@@ -194,6 +197,27 @@ export const authService = {
     const vendor_profile: VendorProfile | undefined = raw.vendor_profile ?? raw.profile ?? undefined;
     setUser(user);
     return { user, vendor_profile };
+  },
+
+  /** Banks supported for payouts (Monnify list, cached by the server). */
+  async getBanks(): Promise<Bank[]> {
+    return (await apiClient.get<Bank[]>(API_ENDPOINTS.AUTH.BANKS)).data;
+  },
+
+  /** Look up the account name for a number + bank. The server holds the result for 10 minutes. */
+  async resolveBankAccount(accountNumber: string, bankCode: string): Promise<BankLookup> {
+    return (await apiClient.post<BankLookup>(API_ENDPOINTS.AUTH.BANK_RESOLVE, { account_number: accountNumber, bank_code: bankCode })).data;
+  },
+
+  /** Vendor confirms the looked-up account is theirs. `password` is required when replacing a verified account. */
+  async confirmBankAccount(accountNumber: string, bankCode: string, password?: string): Promise<BankDetails> {
+    const res = await apiClient.post<{ bank_details: BankDetails }>(API_ENDPOINTS.AUTH.BANK_CONFIRM, {
+      account_number: accountNumber,
+      bank_code: bankCode,
+      confirm: true,
+      ...(password ? { password } : {}),
+    });
+    return res.data.bank_details;
   },
 
   /** Upload (or replace) the vendor logo. Returns the vendor profile with a signed logo URL. */

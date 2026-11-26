@@ -873,6 +873,9 @@ export interface VendorVerification {
   address?: string | null;
   bank_account?: string | null;
   bank_code?: string | null;
+  readonly revoked_at?: string | null;
+  readonly reverify_by?: string | null;
+  readonly revoke_basis?: string | null;
 }
 
 export interface VendorVerificationRequest {

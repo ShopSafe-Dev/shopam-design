@@ -4,6 +4,8 @@ import apiClient from '../config';
 import type * as S from '../openapi-types';
 import { enc, toFormData, type Query } from './_shared';
 
+export type RevokeBasis = "investigation" | "disciplinary" | "vendor_request";
+
 export const staffApi = {
   /** POST /staff/create-staff/ - Create Admin Staff Account */
   createStaffCreate: async (body?: {
@@ -45,8 +47,8 @@ export const staffApi = {
     (await apiClient.patch<S.SupportTicketDetail>(`/staff/tickets/${enc(ticketId)}/update/`, body, { params: query })).data,
 
   /** GET /staff/verify-vendor/ - Get Pending Verifications */
-  verifyVendorList: async (query?: { type?: "address" | "bank" | "cac" | "tin"; verif_id?: string }): Promise<S.VendorVerification[]> =>
-    (await apiClient.get<S.VendorVerification[]>(`/staff/get-verification/`, { params: query })).data,
+  verifyVendorList: async (query?: { type?: "address" | "bank" | "cac" | "tin"; verif_id?: string; status?: "pending" | "verified" }): Promise<S.VendorVerification[]> =>
+    (await apiClient.get<S.VendorVerification[]>(`/staff/verify-vendor/`, { params: query })).data,
 
   /** POST /staff/verify-vendor/ - Process a Verification Request */
   verifyVendorCreate: async (query: { verif_id: string }, body?: {
@@ -58,5 +60,9 @@ export const staffApi = {
     (await apiClient.post<{
   [k: string]: unknown;
 }>(`/staff/verify-vendor/`, body, { params: query })).data,
+
+  /** POST /api/accounts/staff/vendors/{profile_id}/verifications/{type}/revoke - revoke a verification (basis and reason required; replaces reopen). */
+  revokeVerification: async (profileId: string, type: "address" | "bank" | "cac" | "tin", body: { basis: RevokeBasis; reason: string }): Promise<{ message: string; reverify_by: string | null }> =>
+    (await apiClient.post<{ message: string; reverify_by: string | null }>(`/api/accounts/staff/vendors/${enc(profileId)}/verifications/${type}/revoke`, body)).data,
 
 } as const;

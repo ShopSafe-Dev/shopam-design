@@ -93,6 +93,9 @@ export const API_ENDPOINTS = {
     VERIFY_EMAIL: '/api/accounts/user-verify',
     TOKEN_REFRESH: '/api/accounts/token/refresh',
     VENDOR_LOGO: '/api/accounts/vendor/logo',
+    BANKS: '/api/accounts/banks',
+    BANK_RESOLVE: '/api/accounts/vendor/bank/resolve',
+    BANK_CONFIRM: '/api/accounts/vendor/bank/confirm',
     VENDOR_PROFILE_UPDATE: '/api/accounts/profile/vendor-update',
   },
 

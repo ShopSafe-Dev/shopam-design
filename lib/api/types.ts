@@ -82,14 +82,43 @@ export interface VendorProfile {
   tin_verified?: boolean;
   address_verified?: boolean;
   logo?: string | null;
+  /** Payout account, set only through the verified bank flow. */
+  bank_details?: BankDetails | null;
   /** Per type: { status: 'pending'|'approved'|'rejected', reason?, id? }. A missing type means not submitted. */
   verification_status?: Partial<Record<'cac' | 'tin' | 'address' | 'bank', VerificationInfo>>;
+}
+
+export interface BankDetails {
+  bank_name: string;
+  bank_code: string;
+  account_number: string;
+  account_name: string;
+  bank_identity_status?: 'draft' | 'pending' | 'verified' | 'rejected' | string;
+}
+
+export interface Bank {
+  name: string;
+  code: string;
+}
+
+export interface BankLookup {
+  account_name: string;
+  account_number: string;
+  bank_code: string;
+  bank_name: string;
+  /** Hint only: the account name shares a word with your name or business name. */
+  name_matches_profile: boolean;
 }
 
 export interface VerificationInfo {
   id?: string;
   status: 'pending' | 'approved' | 'verified' | 'rejected' | string;
   reason?: string | null;
+  /** True when staff revoked an approved verification. `reason` then holds the revocation reason. */
+  revoked?: boolean;
+  /** ISO deadline to re-submit a revoked verification. */
+  reverify_by?: string | null;
+  revoke_basis?: 'investigation' | 'disciplinary' | 'vendor_request' | null;
 }
 
 export interface FullProfile {

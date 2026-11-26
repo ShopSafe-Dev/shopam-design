@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { authService } from '@/lib/api';
-import type { UserProfile, VendorProfile, VerificationInfo } from '@/lib/api';
+import type { BankDetails, UserProfile, VendorProfile, VerificationInfo } from '@/lib/api';
 
 export interface VendorView {
   id: string;
@@ -18,7 +18,8 @@ export interface VendorView {
   tinVerified: boolean;
   addressVerified: boolean;
   /** Server-reported state per section; undefined = never submitted. */
-  verification: Partial<Record<'cac' | 'tin' | 'address', VerificationInfo>>;
+  verification: Partial<Record<'cac' | 'tin' | 'address' | 'bank', VerificationInfo>>;
+  bank: BankDetails | null;
 }
 
 /** Everything the vendor UI shows comes from GET /api/accounts/profile -> vendor_profile (+ the user's phone). */
@@ -37,6 +38,7 @@ function toView(user: UserProfile, vp: VendorProfile | undefined): VendorView {
     tinVerified: !!vp?.tin_verified,
     addressVerified: !!vp?.address_verified,
     verification: vp?.verification_status ?? {},
+    bank: vp?.bank_details ?? null,
   };
 }
 

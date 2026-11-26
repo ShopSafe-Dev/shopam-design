@@ -1,10 +1,10 @@
 'use client';
 
-import { useRef, useState } from 'react';
-import { BadgeCheck, Clock, FileText, ImagePlus, Loader2, Lock, LogOut, Phone, ShieldCheck, Store } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { BadgeCheck, Banknote, Clock, FileText, ImagePlus, Loader2, Lock, LogOut, Phone, ShieldCheck, Store } from 'lucide-react';
 import { authService } from '@/lib/api';
 import { accountsApi } from '@/lib/api/endpoints/accounts';
-import type { VerificationInfo } from '@/lib/api';
+import type { Bank, BankDetails, BankLookup, VerificationInfo } from '@/lib/api';
 import { useVendorProfile } from '@/lib/vendor/useVendorProfile';
 import Field from '../components/Field';
 import ChangePasswordModal from '@/app/components/auth/ChangePasswordModal';
@@ -24,11 +24,6 @@ function apiError(err: unknown, fallback: string): string {
     if (flat.length) return flat.join(' ');
   }
   return fallback;
-}
-
-function statusOf(err: unknown): string {
-  const status = (err as { response?: { status?: number } })?.response?.status;
-  return status ? ` (HTTP ${status})` : '';
 }
 
 function pickId(res: unknown): string | null {
@@ -99,8 +94,6 @@ function VerifyRow({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
-  // Needed to (re)attach a document later: from this submit, or from the profile after a reload.
-  const [verificationId, setVerificationId] = useState<string | null>(info?.id ?? null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Server state wins. Pending and approved lock the section; rejected and missing stay editable.
@@ -121,28 +114,6 @@ function VerifyRow({
     setFile(f);
   };
 
-  /** POST /api/accounts/vendor/documents. The server accepts more files while the section is pending. */
-  const sendDocument = async (id: string, f: File) => {
-    try {
-      await accountsApi.vendorDocumentsCreate({ verification: id, files: [f] });
-      setFile(null);
-      setNote('Document uploaded.');
-    } catch (e) {
-      setNote(`The document did not upload: ${apiError(e, 'upload failed')}${statusOf(e)}. Use "Upload document" to try again.`);
-    }
-  };
-
-  /** Retry from the locked row, without re-submitting the details. */
-  const retryUpload = async (f: File | undefined) => {
-    if (fileRef.current) fileRef.current.value = '';
-    if (!f || !verificationId) return;
-    if (f.size > MAX_DOC_BYTES) return setNote('That file is over 10 MB.');
-    setBusy(true);
-    setNote('');
-    await sendDocument(verificationId, f);
-    setBusy(false);
-  };
-
   const submit = async () => {
     setError('');
     setNote('');
@@ -155,11 +126,17 @@ function VerifyRow({
         kind === 'cac' ? { verification_type: kind, cac_number: v } : kind === 'tin' ? { verification_type: kind, tin_number: v } : { verification_type: kind, address: v };
       const res = await accountsApi.submitVerificationCreate(body);
       setSubmitted(true); // the server locks this section as soon as the submit succeeds
-      const id = pickId(res) ?? verificationId;
-      setVerificationId(id);
       if (withDocument && file) {
-        if (id) await sendDocument(id, file);
-        else setNote('Submitted, but the server did not return a verification id. Reload this page, then use "Upload document".');
+        const id = pickId(res);
+        if (!id) {
+          setNote('Submitted. The server did not return a verification id, so the document could not be attached. Contact support.');
+        } else {
+          try {
+            await accountsApi.vendorDocumentsCreate({ verification: id, files: [file] });
+          } catch (e) {
+            setNote(`Submitted, but the document did not upload: ${apiError(e, 'upload failed')}`);
+          }
+        }
       }
     } catch (err) {
       const msg = apiError(err, 'Could not submit. Try again.');
@@ -181,20 +158,6 @@ function VerifyRow({
           </div>
           <StatusBadge state={state} />
         </div>
-        {withDocument && state === 'pending' && (
-          <div className="mt-3 flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              disabled={busy || !verificationId}
-              onClick={() => fileRef.current?.click()}
-              className="flex shrink-0 items-center gap-1.5 rounded-full border border-slate-200 px-3.5 py-2 text-[13px] font-semibold text-ink transition-colors hover:border-ink disabled:opacity-60"
-            >
-              {busy ? <Loader2 size={13} className="animate-spin" /> : <FileText size={13} />} Upload document
-            </button>
-            <input ref={fileRef} type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" className="hidden" onChange={(e) => void retryUpload(e.target.files?.[0])} />
-            <span className="text-[11px] text-slate-500">{verificationId ? 'PDF, PNG or JPG, up to 10 MB, 3 files max.' : 'Reload this page to attach a document.'}</span>
-          </div>
-        )}
         {note && <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">{note}</p>}
       </div>
     );
@@ -202,7 +165,13 @@ function VerifyRow({
 
   return (
     <div className="space-y-3 border-b border-slate-100 px-4 py-4 last:border-0">
-      {rejected && (
+      {rejected && info?.revoked && (
+        <p role="alert" className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+          Verification revoked{info.revoke_basis === 'vendor_request' ? ' at your request' : info.revoke_basis === 'disciplinary' ? ' (disciplinary action)' : info.revoke_basis === 'investigation' ? ' (investigation)' : ''}{info.reason ? `: ${info.reason}` : '.'}{' '}
+          {info.reverify_by ? `Submit it again by ${new Date(info.reverify_by).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })} or you will be locked out of sign-in.` : 'Submit it again.'}
+        </p>
+      )}
+      {rejected && !info?.revoked && (
         <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-600">
           Rejected{info?.reason ? `: ${info.reason}` : '.'} Correct it and submit again.
         </p>
@@ -236,6 +205,213 @@ function VerifyRow({
   );
 }
 
+function LogoSection({ logo, name, onChanged }: { logo: string | null; name: string; onChanged: () => void }) {
+  const input = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  const pick = async (f: File | undefined) => {
+    setError('');
+    if (!f) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(f.type)) return setError('Use a JPEG, PNG or WebP image.');
+    if (f.size > 5 * 1024 * 1024) return setError('Logo must be 5 MB or smaller.');
+    setBusy(true);
+    try {
+      await authService.uploadVendorLogo(f);
+      onChanged();
+    } catch (err) {
+      setError(apiError(err, 'Could not upload the logo.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async () => {
+    setError('');
+    setBusy(true);
+    try {
+      await authService.removeVendorLogo();
+      onChanged();
+    } catch (err) {
+      setError(apiError(err, 'Could not remove the logo.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
+      <SectionTitle icon={ImagePlus} title="Logo" note="Shown on your shop, products and chats. JPEG, PNG or WebP, up to 5 MB." />
+      <div className="flex items-center gap-4 px-4 py-4">
+        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-ink text-xl font-black text-white">
+          {logo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={logo} alt="Business logo" className="h-full w-full object-cover" />
+          ) : (
+            (name || 'S').charAt(0).toUpperCase()
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-ink">{logo ? 'Logo uploaded' : 'No logo yet'}</p>
+          {error ? (
+            <p role="alert" className="mt-0.5 text-xs font-medium text-red-600">{error}</p>
+          ) : (
+            logo && !busy && (
+              <button type="button" onClick={remove} className="mt-0.5 text-xs font-semibold text-slate-500 underline hover:text-red-600">Remove logo</button>
+            )
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={() => input.current?.click()}
+          disabled={busy}
+          className="flex shrink-0 items-center gap-1.5 rounded-full border border-slate-200 px-3.5 py-2 text-[13px] font-semibold text-ink transition-colors hover:border-ink disabled:opacity-60"
+        >
+          {busy && <Loader2 size={13} className="animate-spin" />} {logo ? 'Change' : 'Upload'}
+        </button>
+        <input ref={input} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => { void pick(e.target.files?.[0]); e.target.value = ''; }} />
+      </div>
+    </section>
+  );
+}
+
+function BankSection({ bank, info, onChanged }: { bank: BankDetails | null; info?: VerificationInfo; onChanged: () => void }) {
+  const [editing, setEditing] = useState(!bank);
+  const [banks, setBanks] = useState<Bank[]>([]);
+  const [banksError, setBanksError] = useState('');
+  const [filter, setFilter] = useState('');
+  const [code, setCode] = useState('');
+  const [number, setNumber] = useState('');
+  const [lookup, setLookup] = useState<BankLookup | null>(null);
+  const [mine, setMine] = useState(false);
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!editing || banks.length) return;
+    authService.getBanks().then(setBanks).catch((e) => setBanksError(apiError(e, 'Could not load banks.')));
+  }, [editing, banks.length]);
+
+  const shown = banks.filter((b) => b.name.toLowerCase().includes(filter.trim().toLowerCase()));
+  const needPassword = !!bank && (bank.bank_identity_status === 'verified');
+  const revoked = !!info?.revoked && !bank;
+
+  const reset = () => {
+    setLookup(null);
+    setMine(false);
+    setError('');
+  };
+
+  const find = async () => {
+    reset();
+    if (!code) return setError('Choose your bank.');
+    if (!/^\d{10}$/.test(number)) return setError('Enter the 10-digit account number.');
+    setBusy(true);
+    try {
+      setLookup(await authService.resolveBankAccount(number, code));
+    } catch (e) {
+      setError(apiError(e, 'Could not look up that account.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const confirm = async () => {
+    if (!lookup) return;
+    setError('');
+    setBusy(true);
+    try {
+      await authService.confirmBankAccount(lookup.account_number, lookup.bank_code, needPassword ? password : undefined);
+      setEditing(false);
+      setPassword('');
+      reset();
+      onChanged();
+    } catch (e) {
+      setError(apiError(e, 'Could not save the account.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
+      <SectionTitle icon={Banknote} title="Payout account" note="Where your earnings are sent. We look up the account name so you can confirm it is yours." />
+      {revoked && (
+        <p role="alert" className="mx-4 mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+          Your payout account verification was revoked{info?.reason ? `: ${info.reason}` : '.'}{' '}
+          {info?.reverify_by ? `Verify an account by ${new Date(info.reverify_by).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}.` : ''}
+        </p>
+      )}
+      {bank && !editing ? (
+        <div className="flex items-start justify-between gap-4 px-4 py-4">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-ink">{bank.account_name}</p>
+            <p className="mt-0.5 text-xs text-slate-600">{bank.bank_name} • ••••{bank.account_number.slice(-4)}</p>
+            <div className="mt-2"><StatusBadge state={bank.bank_identity_status === 'verified' ? 'verified' : 'pending'} /></div>
+          </div>
+          <button type="button" onClick={() => setEditing(true)} className="shrink-0 rounded-full border border-slate-200 px-3.5 py-2 text-[13px] font-semibold text-ink hover:border-ink">Change</button>
+        </div>
+      ) : (
+        <div className="space-y-3 px-4 py-4">
+          <div>
+            <label htmlFor="bank-filter" className="mb-1 block text-xs font-semibold text-slate-500">Bank</label>
+            <input
+              id="bank-filter"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              placeholder="Search banks"
+              className="mb-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-ink"
+            />
+            <select
+              value={code}
+              onChange={(e) => { setCode(e.target.value); reset(); }}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-ink"
+              size={1}
+            >
+              <option value="">{banks.length ? 'Select your bank' : banksError || 'Loading banks...'}</option>
+              {shown.map((b) => <option key={b.code} value={b.code}>{b.name}</option>)}
+            </select>
+          </div>
+          <Field label="Account number" value={number} onChange={(v) => { setNumber(v.replace(/\D/g, '').slice(0, 10)); reset(); }} inputMode="numeric" />
+          {!lookup && (
+            <button type="button" onClick={find} disabled={busy} className="flex items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-[13px] font-bold text-white disabled:opacity-60">
+              {busy && <Loader2 size={14} className="animate-spin" />} Find account name
+            </button>
+          )}
+          {lookup && (
+            <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Account name</p>
+                <p className="text-base font-black text-ink">{lookup.account_name}</p>
+                <p className="text-xs text-slate-600">{lookup.bank_name} • {lookup.account_number}</p>
+              </div>
+              {!lookup.name_matches_profile && (
+                <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">This name does not look like your name or business name. Only continue if the account is really yours.</p>
+              )}
+              <label className="flex items-start gap-2 text-sm text-ink">
+                <input type="checkbox" checked={mine} onChange={(e) => setMine(e.target.checked)} className="mt-0.5" />
+                This is my account and the name is correct.
+              </label>
+              {needPassword && <Field label="Your password" type="password" value={password} onChange={setPassword} autoComplete="current-password" />}
+              <div className="flex gap-2">
+                <button type="button" onClick={confirm} disabled={!mine || busy || (needPassword && !password)} className="flex items-center gap-2 rounded-full bg-[#FA3728] px-5 py-2.5 text-[13px] font-bold text-white disabled:opacity-60">
+                  {busy && <Loader2 size={14} className="animate-spin" />} Confirm and save
+                </button>
+                <button type="button" onClick={reset} className="rounded-full border border-slate-200 px-4 py-2.5 text-[13px] font-semibold text-ink">Not mine</button>
+              </div>
+            </div>
+          )}
+          {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-600">{error}</p>}
+          {bank && (
+            <button type="button" onClick={() => { setEditing(false); reset(); }} className="text-xs font-semibold text-slate-500 underline">Cancel</button>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default function SettingsPage() {
   const [passwordOpen, setPasswordOpen] = useState(false);
   const { vendor, loading, error, reload } = useVendorProfile();
@@ -263,26 +439,7 @@ export default function SettingsPage() {
       ) : (
         <>
           {/* Logo */}
-          <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
-            <SectionTitle icon={ImagePlus} title="Logo" note="Shown on your shop, products and chats. Your cover is generated from your business name." />
-            <div className="flex items-center gap-4 px-4 py-4">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-ink text-xl font-black text-white">
-                {vendor.logo ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={vendor.logo} alt="Business logo" className="h-full w-full object-cover" />
-                ) : (
-                  (vendor.name || 'S').charAt(0).toUpperCase()
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-ink">{vendor.logo ? 'Logo uploaded' : 'No logo yet'}</p>
-                <p className="mt-0.5 text-xs text-slate-600">Changing the logo after signup needs a backend endpoint that does not exist yet.</p>
-              </div>
-              <button disabled className="shrink-0 cursor-not-allowed rounded-full border border-slate-200 px-3.5 py-2 text-[13px] font-semibold text-slate-400">
-                Upload
-              </button>
-            </div>
-          </section>
+          <LogoSection logo={vendor.logo} name={vendor.name} onChanged={reload} />
 
           {/* Business identity (locked) */}
           <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
@@ -298,6 +455,8 @@ export default function SettingsPage() {
             <VerifyRow kind="tin" label="Tax ID (TIN)" initial={vendor.tin} verified={vendor.tinVerified} info={vendor.verification.tin} />
             <VerifyRow kind="address" label="Business address" initial={vendor.address} verified={vendor.addressVerified} info={vendor.verification.address} textarea />
           </section>
+
+          <BankSection bank={vendor.bank} info={vendor.verification.bank} onChanged={reload} />
         </>
       )}
 
