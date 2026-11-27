@@ -15,7 +15,7 @@ const NAV: { href: string; label: string; icon: LucideIcon }[] = [
   { href: '/staff-panel/tickets', label: 'Tickets', icon: MessageCircle },
   { href: '/staff-panel/disputes', label: 'Disputes', icon: Scale },
   { href: '/staff-panel/moderation', label: 'Orders & accounts', icon: UserCog },
-  { href: '/staff-panel/payouts', label: 'Payouts', icon: Wallet },
+  { href: '/staff-panel/payouts', label: 'Finance', icon: Wallet },
   { href: '/staff-panel/reviews', label: 'Reviews', icon: FileText },
   { href: '/staff-panel/mailer', label: 'Mailer', icon: Bell },
   { href: '/staff-panel/staff', label: 'Staff', icon: User },
