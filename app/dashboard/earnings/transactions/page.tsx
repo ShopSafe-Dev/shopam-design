@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
-import { money } from '@/lib/order-steps';
-import { TRANSACTIONS } from '../data';
+import TransactionRows from '../../components/TransactionRows';
+import { useEarnings } from '@/lib/vendor/useEarnings';
 
 export default function TransactionsPage() {
+  const { earnings, loading, error } = useEarnings(200);
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-3">
@@ -14,22 +15,12 @@ export default function TransactionsPage() {
         </Link>
         <div>
           <h2 className="text-xl font-black tracking-tight text-ink">Transactions</h2>
-          <p className="text-xs text-slate-600">All credits and debits on your account.</p>
+          <p className="text-xs text-slate-600">Every paid order and where its payout stands.</p>
         </div>
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
-        {TRANSACTIONS.map((t) => (
-          <div key={t.id} className="flex items-center justify-between border-b border-slate-50 px-4 py-3.5 last:border-0">
-            <div className="min-w-0">
-              <p className="truncate text-[13px] font-semibold text-ink">{t.label}</p>
-              <p className="text-[11px] text-slate-500">{t.date}</p>
-            </div>
-            <span className={`text-[13px] font-bold ${t.amount >= 0 ? 'text-emerald-600' : 'text-slate-600'}`}>
-              {t.amount >= 0 ? '+' : ''}{money(Math.abs(t.amount))}
-            </span>
-          </div>
-        ))}
+        <TransactionRows rows={earnings?.transactions ?? []} loading={loading} error={error} />
       </div>
     </div>
   );

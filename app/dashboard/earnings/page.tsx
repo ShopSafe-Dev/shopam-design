@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { ArrowRight, Zap } from 'lucide-react';
-import { money } from '@/lib/order-steps';
 import BalanceCard from '../components/BalanceCard';
-import { TRANSACTIONS } from './data';
+import TransactionRows from '../components/TransactionRows';
+import { useEarnings } from '@/lib/vendor/useEarnings';
 
 export default function EarningsPage() {
+  const { earnings, loading, error } = useEarnings(4);
   return (
     <div className="space-y-6">
       <div>
@@ -15,7 +16,7 @@ export default function EarningsPage() {
       </div>
 
       {/* Balance card */}
-      <BalanceCard />
+      <BalanceCard earnings={earnings} loading={loading} />
 
       <div className="flex items-start gap-3 rounded-2xl border border-slate-200/80 bg-white px-4 py-3.5">
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#FA3728]/10 text-[#FA3728]"><Zap size={15} /></span>
@@ -33,17 +34,7 @@ export default function EarningsPage() {
           </Link>
         </div>
         <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
-          {TRANSACTIONS.slice(0, 4).map((t) => (
-            <div key={t.id} className="flex items-center justify-between border-b border-slate-50 px-4 py-3 last:border-0">
-              <div className="min-w-0">
-                <p className="truncate text-[13px] font-semibold text-ink">{t.label}</p>
-                <p className="text-[11px] text-slate-500">{t.date}</p>
-              </div>
-              <span className={`text-[13px] font-bold ${t.amount >= 0 ? 'text-emerald-600' : 'text-slate-600'}`}>
-                {t.amount >= 0 ? '+' : ''}{money(Math.abs(t.amount))}
-              </span>
-            </div>
-          ))}
+          <TransactionRows rows={earnings?.transactions ?? []} loading={loading} error={error} />
         </div>
       </section>
 

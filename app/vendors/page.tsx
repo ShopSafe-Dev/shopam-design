@@ -9,7 +9,7 @@ import AppHeader from '../components/AppHeader';
 import SearchBar from '../components/home/SearchBar';
 import CategoryPills from '../components/home/CategoryPills';
 import VendorCard from './components/VendorCard';
-import { FALLBACK_VENDORS, VENDOR_SORTS, matchesCategory, type VendorSort } from './data';
+import { VENDOR_SORTS, matchesCategory, type VendorSort } from './data';
 import BottomNav from '../components/BottomNav';
 
 export default function VendorsPage() {
@@ -26,10 +26,10 @@ export default function VendorsPage() {
     vendorsService
       .getVendors({ page_size: 50 })
       .then((res) => {
-        if (active) setVendors(res.results.length > 0 ? res.results : FALLBACK_VENDORS);
+        if (active) setVendors(res.results);
       })
       .catch(() => {
-        if (active) setVendors(FALLBACK_VENDORS);
+        if (active) setVendors([]);
       })
       .finally(() => {
         if (active) setLoading(false);

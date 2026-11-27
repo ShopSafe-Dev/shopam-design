@@ -8,7 +8,6 @@ import type { Product } from '@/lib/api';
 import AppHeader from '../components/AppHeader';
 import SearchBar from '../components/home/SearchBar';
 import CategoryPills from '../components/home/CategoryPills';
-import { DUMMY_PRODUCTS } from './data';
 import ProductCard from './components/ProductCard';
 import FilterDropdown from './components/FilterDropdown';
 import BottomNav from '../components/BottomNav';
@@ -68,7 +67,7 @@ export default function ExplorePage() {
         response = await productsService.getProducts(filters);
       }
 
-      const results = response.results.length > 0 ? response.results : (page === 1 ? DUMMY_PRODUCTS : []);
+      const results = response.results;
 
       if (page === 1) {
         setProducts(results);
@@ -78,7 +77,7 @@ export default function ExplorePage() {
 
       setHasMore(!!response.next);
     } catch {
-      if (page === 1) setProducts(DUMMY_PRODUCTS);
+      if (page === 1) setProducts([]);
       setHasMore(false);
     } finally {
       setLoading(false);

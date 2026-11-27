@@ -1,28 +1,52 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Home, Users, Bookmark, Hash, ArrowRight } from 'lucide-react';
-import { authService } from '@/lib/api';
+import { Home, Hash, ArrowRight, Loader2 } from 'lucide-react';
+import { authService, postsService, productsService, vendorsService } from '@/lib/api';
+import type { ProductService, Vendor } from '@/lib/api';
 import AppHeader from '../components/AppHeader';
 import PostCard from '../components/feed/PostCard';
-import { FEED_POSTS } from '../components/feed/data';
-import { vendorCards, trendingProducts } from '../components/home/data';
+import { toFeedPost, type FeedPost } from '../components/feed/data';
 import BottomNav from '../components/BottomNav';
 
 export default function FeedPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [activeTab, setActiveTab] = useState('for-you');
+  const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [newProducts, setNewProducts] = useState<ProductService[]>([]);
 
   useEffect(() => {
     setIsAuthenticated(!!authService.getCurrentUser());
+    vendorsService.getVendors({ page_size: 5 }).then((r) => setVendors(r.results)).catch(() => {});
+    productsService.getProducts({ page: 1, page_size: 4, ordering: '-created_at' }).then((r) => setNewProducts(r.results)).catch(() => {});
   }, []);
 
-  const tabs = [
-    { id: 'for-you', label: 'For you', icon: Home },
-    { id: 'following', label: 'Following', icon: Users },
-    { id: 'saved', label: 'Saved', icon: Bookmark },
-  ];
+  const loadPage = useCallback(async (p: number) => {
+    setLoading(true);
+    setFailed(false);
+    try {
+      const res = await postsService.getPosts({ page: p, page_size: 10 });
+      const mapped = (res.results ?? []).map(toFeedPost);
+      setPosts((prev) => (p === 1 ? mapped : [...prev, ...mapped]));
+      setHasMore(!!res.next);
+    } catch {
+      setFailed(true);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadPage(page);
+  }, [page, loadPage]);
+
+  const tabs = [{ id: 'for-you', label: 'For you', icon: Home }];
+  const activeTab = 'for-you';
 
   const trendingTags = ['fashion', 'african', 'dress', 'tech', 'earbuds', 'food', 'beauty', 'books'];
 
@@ -45,7 +69,6 @@ export default function FeedPage() {
                   return (
                     <button
                       key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
                       className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors ${
                         active ? 'bg-ink text-white' : 'text-slate-600 hover:bg-slate-50'
                       }`}
@@ -80,19 +103,36 @@ export default function FeedPage() {
           {/* Center — the feed timeline */}
           <div className="mx-auto w-full max-w-xl">
             <div className="space-y-5">
-              {FEED_POSTS.map((post, index) => (
+              {posts.map((post, index) => (
                 <PostCard key={post.id} post={post} index={index} />
               ))}
             </div>
 
-            <div className="mt-6 text-center">
-              <button
-                disabled
-                className="cursor-not-allowed rounded-full border border-slate-200 bg-white px-8 py-2.5 text-sm font-semibold text-slate-400 opacity-70"
-              >
-                Load More Posts
-              </button>
-            </div>
+            {loading && (
+              <div className="mt-8 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-ink" /></div>
+            )}
+            {!loading && failed && (
+              <div className="mt-8 rounded-3xl border border-dashed border-slate-200 py-14 text-center">
+                <p className="text-base font-semibold text-ink">Could not load posts</p>
+                <button onClick={() => void loadPage(page)} className="mt-3 rounded-full bg-ink px-5 py-2 text-sm font-semibold text-white hover:bg-[#FA3728]">Try again</button>
+              </div>
+            )}
+            {!loading && !failed && posts.length === 0 && (
+              <div className="mt-8 rounded-3xl border border-dashed border-slate-200 py-14 text-center">
+                <p className="text-base font-semibold text-ink">No posts yet</p>
+                <p className="mt-1 text-sm text-slate-500">Posts from vendors will show up here.</p>
+              </div>
+            )}
+            {!loading && hasMore && (
+              <div className="mt-6 text-center">
+                <button
+                  onClick={() => setPage((p) => p + 1)}
+                  className="rounded-full border border-slate-200 bg-white px-8 py-2.5 text-sm font-semibold text-ink transition-colors hover:border-ink"
+                >
+                  Load more posts
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Right rail — suggested vendors + trending products */}
@@ -110,23 +150,27 @@ export default function FeedPage() {
                 </Link>
               </div>
               <div className="space-y-3">
-                {vendorCards.map((vendor) => (
+                {vendors.map((vendor) => (
                   <Link
-                    key={vendor.name}
-                    href={`/vendors/${encodeURIComponent(vendor.name)}`}
+                    key={vendor.id}
+                    href={`/vendors/${encodeURIComponent(vendor.id)}`}
                     className="group flex items-center gap-3"
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={vendor.image}
-                      alt={vendor.name}
-                      className="h-10 w-10 shrink-0 rounded-full object-cover ring-1 ring-slate-900/5"
-                    />
+                    {vendor.avatar ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={vendor.avatar}
+                        alt={vendor.name}
+                        className="h-10 w-10 shrink-0 rounded-full object-cover ring-1 ring-slate-900/5"
+                      />
+                    ) : (
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink text-sm font-black text-white">{vendor.name.charAt(0).toUpperCase()}</span>
+                    )}
                     <div className="min-w-0">
                       <p className="truncate text-[13px] font-semibold text-ink transition-colors group-hover:text-[#FA3728]">
                         {vendor.name}
                       </p>
-                      <p className="truncate text-[11px] text-slate-400">{vendor.tag}</p>
+                      <p className="truncate text-[11px] text-slate-400">{vendor.category}</p>
                     </div>
                   </Link>
                 ))}
@@ -136,7 +180,7 @@ export default function FeedPage() {
             <div className="mt-4 rounded-2xl border border-slate-200/70 bg-white p-4">
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                  Trending products
+                  New products
                 </h2>
                 <Link
                   href="/explore"
@@ -146,24 +190,28 @@ export default function FeedPage() {
                 </Link>
               </div>
               <div className="space-y-3">
-                {trendingProducts.slice(0, 4).map((product) => (
+                {newProducts.map((product) => (
                   <Link
                     key={product.id}
-                    href={`/explore?q=${encodeURIComponent(product.name)}`}
+                    href={`/products/${product.id}`}
                     className="group flex items-center gap-3"
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={product.image}
-                      alt={product.name}
-                      className="h-10 w-10 shrink-0 rounded-xl object-cover ring-1 ring-slate-900/5"
-                    />
+                    {product.images?.[0]?.image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={product.images[0].image_url}
+                        alt={product.title}
+                        className="h-10 w-10 shrink-0 rounded-xl object-cover ring-1 ring-slate-900/5"
+                      />
+                    ) : (
+                      <span className="h-10 w-10 shrink-0 rounded-xl bg-slate-100" />
+                    )}
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[13px] font-semibold text-ink transition-colors group-hover:text-[#FA3728]">
-                        {product.name}
+                        {product.title}
                       </p>
                       <p className="truncate text-[11px] font-bold text-ink">
-                        ₦{product.price.toLocaleString()}
+                        ₦{Number(product.price).toLocaleString()}
                       </p>
                     </div>
                   </Link>

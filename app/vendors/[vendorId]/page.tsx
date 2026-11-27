@@ -12,7 +12,6 @@ import {
   Search,
   Shield,
   ArrowLeft,
-  Store,
 } from 'lucide-react';
 import {
   vendorsService,
@@ -28,8 +27,8 @@ import { DEV_AUTH_BYPASS } from '@/lib/devAuth';
 import AppHeader from '../../components/AppHeader';
 import ProductCard from '../../explore/components/ProductCard';
 import PostCard from '../../components/feed/PostCard';
-import { toFeedPost, FEED_POSTS, type FeedPost } from '../../components/feed/data';
-import { fallbackVendor, FALLBACK_VENDOR_PRODUCTS } from './data';
+import { toFeedPost, type FeedPost } from '../../components/feed/data';
+import BusinessCover from '@/app/components/BusinessCover';
 import BottomNav from '../../components/BottomNav';
 
 type Tab = 'products' | 'posts' | 'info';
@@ -56,6 +55,7 @@ export default function VendorShopPage() {
   const [products, setProducts] = useState<ProductService[]>([]);
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
 
   const [activeTab, setActiveTab] = useState<Tab>('products');
   const [searchQuery, setSearchQuery] = useState('');
@@ -77,11 +77,7 @@ export default function VendorShopPage() {
         setFollowing(data.isFollowing);
       })
       .catch(() => {
-        if (active) {
-          const fb = fallbackVendor(vendorId);
-          setVendor(fb);
-          setFollowing(fb.isFollowing);
-        }
+        if (active) setNotFound(true);
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -90,10 +86,10 @@ export default function VendorShopPage() {
     productsService
       .getProducts({ vendor: vendorId, page_size: 24 })
       .then((res) => {
-        if (active) setProducts(res.results.length > 0 ? res.results : FALLBACK_VENDOR_PRODUCTS);
+        if (active) setProducts(res.results);
       })
       .catch(() => {
-        if (active) setProducts(FALLBACK_VENDOR_PRODUCTS);
+        if (active) setProducts([]);
       });
 
     postsService
@@ -101,10 +97,10 @@ export default function VendorShopPage() {
       .then((res) => {
         if (!active) return;
         const mapped = (res.results ?? []).map(toFeedPost).filter((p) => p.image);
-        setPosts(mapped.length > 0 ? mapped : FEED_POSTS.slice(0, 3));
+        setPosts(mapped);
       })
       .catch(() => {
-        if (active) setPosts(FEED_POSTS.slice(0, 3));
+        if (active) setPosts([]);
       });
 
     return () => {
@@ -167,6 +163,20 @@ export default function VendorShopPage() {
         return list;
     }
   }, [products, searchQuery, sortBy]);
+
+  if (notFound && !vendor) {
+    return (
+      <div className="min-h-screen bg-canvas">
+        <AppHeader />
+        <main className="mx-auto max-w-xl px-4 pb-28 pt-24 text-center">
+          <p className="text-lg font-semibold text-ink">Shop not found</p>
+          <p className="mt-1 text-sm text-slate-500">It may have been removed, or the link is wrong.</p>
+          <Link href="/vendors" className="mt-6 inline-flex h-11 items-center rounded-full bg-ink px-6 text-sm font-bold text-white hover:bg-[#FA3728]">All shops</Link>
+        </main>
+        <BottomNav />
+      </div>
+    );
+  }
 
   if (loading || !vendor) {
     return (
@@ -233,20 +243,7 @@ export default function VendorShopPage() {
             // eslint-disable-next-line @next/next/no-img-element
             <img src={vendor.cover} alt="" className="h-full w-full object-cover" />
           ) : (
-            <div className="relative h-full w-full bg-gradient-to-br from-red-50 via-orange-50 to-amber-50">
-              <div
-                className="absolute inset-0 opacity-60"
-                style={{
-                  backgroundImage:
-                    'radial-gradient(circle at 1px 1px, rgba(250,55,40,0.12) 1px, transparent 0)',
-                  backgroundSize: '18px 18px',
-                }}
-              />
-              <Store
-                size={40}
-                className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[#FA3728]/20"
-              />
-            </div>
+            <BusinessCover name={vendor.name} showName={false} className="h-full w-full" />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/15 to-black/10" />
 
@@ -408,7 +405,7 @@ export default function VendorShopPage() {
 
         {/* Posts */}
         {activeTab === 'posts' && (
-          <div className="mx-auto mt-6 max-w-xl">
+          <div className="mx-auto mt-6 max-w-2xl">
             {posts.length === 0 ? (
               <div className="rounded-3xl border border-dashed border-slate-200 py-20 text-center">
                 <p className="text-lg font-semibold text-ink">No posts yet</p>

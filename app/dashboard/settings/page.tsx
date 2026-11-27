@@ -285,25 +285,49 @@ function LogoSection({ logo, name, onChanged }: { logo: string | null; name: str
   );
 }
 
-/** Type-ahead bank picker: one input, a short scrolling result list, keyboard and screen reader friendly. */
-function BankPicker({ banks, value, loading, error, onChange }: { banks: Bank[]; value: string; loading: boolean; error: string; onChange: (code: string) => void }) {
-  const selected = banks.find((b) => b.code === value) ?? null;
+/** Type-ahead bank picker. Searches on the server as you type (debounced), so the result is never a stale or partial list. */
+function BankPicker({ value, onChange }: { value: Bank | null; onChange: (bank: Bank | null) => void }) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
+  const [results, setResults] = useState<Bank[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [error, setError] = useState('');
   const [active, setActive] = useState(0);
   const boxRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
+  const seq = useRef(0);
 
-  const q = query.trim().toLowerCase();
-  const results = (q ? banks.filter((b) => b.name.toLowerCase().includes(q)) : banks)
-    .slice()
-    .sort((a, b) => Number(b.name.toLowerCase().startsWith(q)) - Number(a.name.toLowerCase().startsWith(q)) || a.name.localeCompare(b.name));
+  // Debounced server search. Only the latest request may update the list.
+  useEffect(() => {
+    if (!open) return;
+    const my = ++seq.current;
+    setSearching(true);
+    setError('');
+    const t = setTimeout(
+      () => {
+        authService
+          .getBanks(query, 30)
+          .then((r) => {
+            if (my !== seq.current) return;
+            setResults(r);
+            setActive(0);
+          })
+          .catch((e) => {
+            if (my === seq.current) setError(apiError(e, 'Could not search banks.'));
+          })
+          .finally(() => {
+            if (my === seq.current) setSearching(false);
+          });
+      },
+      query ? 250 : 0
+    );
+    return () => clearTimeout(t);
+  }, [query, open]);
 
-  useEffect(() => setActive(0), [q]);
   useEffect(() => {
     const el = listRef.current?.children[active] as HTMLElement | undefined;
     el?.scrollIntoView({ block: 'nearest' });
-  }, [active, open]);
+  }, [active]);
   useEffect(() => {
     const away = (e: MouseEvent) => {
       if (!boxRef.current?.contains(e.target as Node)) setOpen(false);
@@ -313,7 +337,7 @@ function BankPicker({ banks, value, loading, error, onChange }: { banks: Bank[];
   }, []);
 
   const pick = (b: Bank) => {
-    onChange(b.code);
+    onChange(b);
     setQuery('');
     setOpen(false);
   };
@@ -337,25 +361,27 @@ function BankPicker({ banks, value, loading, error, onChange }: { banks: Bank[];
   return (
     <div ref={boxRef} className="relative">
       <label htmlFor="bank-picker" className="mb-1 block text-xs font-semibold text-slate-500">Bank</label>
-      <input
-        id="bank-picker"
-        role="combobox"
-        aria-expanded={open}
-        aria-controls="bank-picker-list"
-        aria-autocomplete="list"
-        autoComplete="off"
-        value={open ? query : selected?.name ?? query}
-        disabled={loading && !banks.length}
-        onFocus={() => setOpen(true)}
-        onChange={(e) => {
-          setQuery(e.target.value);
-          setOpen(true);
-          if (value) onChange('');
-        }}
-        onKeyDown={onKey}
-        placeholder={loading && !banks.length ? 'Loading banks...' : error || 'Type to search, e.g. Moniepoint'}
-        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-ink"
-      />
+      <div className="relative">
+        <input
+          id="bank-picker"
+          role="combobox"
+          aria-expanded={open}
+          aria-controls="bank-picker-list"
+          aria-autocomplete="list"
+          autoComplete="off"
+          value={open ? query : value?.name ?? query}
+          onFocus={() => setOpen(true)}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setOpen(true);
+            if (value) onChange(null);
+          }}
+          onKeyDown={onKey}
+          placeholder="Type your bank name, e.g. Moniepoint"
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 pr-9 text-sm outline-none focus:border-ink"
+        />
+        {searching && <Loader2 size={15} className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-slate-400" />}
+      </div>
       {open && (
         <ul
           id="bank-picker-list"
@@ -363,18 +389,21 @@ function BankPicker({ banks, value, loading, error, onChange }: { banks: Bank[];
           role="listbox"
           className="absolute z-20 mt-1 max-h-60 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white py-1 shadow-lg"
         >
-          {results.length === 0 && <li className="px-3 py-2 text-sm text-slate-500">No bank matches &quot;{query}&quot;.</li>}
+          {error && <li className="px-3 py-2 text-sm text-red-600">{error}</li>}
+          {!error && !searching && results.length === 0 && (
+            <li className="px-3 py-2 text-sm text-slate-500">{query ? <>No bank matches &quot;{query}&quot;.</> : 'No banks available.'}</li>
+          )}
           {results.map((b, i) => (
             <li
               key={b.code}
               role="option"
-              aria-selected={b.code === value}
+              aria-selected={b.code === value?.code}
               onMouseEnter={() => setActive(i)}
               onMouseDown={(e) => {
                 e.preventDefault();
                 pick(b);
               }}
-              className={`cursor-pointer px-3 py-2 text-sm ${i === active ? 'bg-slate-100 text-ink' : 'text-slate-700'} ${b.code === value ? 'font-bold' : ''}`}
+              className={`cursor-pointer px-3 py-2 text-sm ${i === active ? 'bg-slate-100 text-ink' : 'text-slate-700'} ${b.code === value?.code ? 'font-bold' : ''}`}
             >
               {b.name}
             </li>
@@ -387,9 +416,7 @@ function BankPicker({ banks, value, loading, error, onChange }: { banks: Bank[];
 
 function BankSection({ bank, info, onChanged }: { bank: BankDetails | null; info?: VerificationInfo; onChanged: () => void }) {
   const [editing, setEditing] = useState(!bank);
-  const [banks, setBanks] = useState<Bank[]>([]);
-  const [banksError, setBanksError] = useState('');
-  const [code, setCode] = useState('');
+  const [bankSel, setBankSel] = useState<Bank | null>(null);
   const [number, setNumber] = useState('');
   const [lookup, setLookup] = useState<BankLookup | null>(null);
   const [mine, setMine] = useState(false);
@@ -397,11 +424,7 @@ function BankSection({ bank, info, onChanged }: { bank: BankDetails | null; info
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    if (!editing || banks.length) return;
-    authService.getBanks().then(setBanks).catch((e) => setBanksError(apiError(e, 'Could not load banks.')));
-  }, [editing, banks.length]);
-
+  const code = bankSel?.code ?? '';
   const needPassword = !!bank && (bank.bank_identity_status === 'verified');
   const revoked = !!info?.revoked && !bank;
 
@@ -462,13 +485,7 @@ function BankSection({ bank, info, onChanged }: { bank: BankDetails | null; info
         </div>
       ) : (
         <div className="space-y-3 px-4 py-4">
-          <BankPicker
-            banks={banks}
-            value={code}
-            loading={!banksError}
-            error={banksError}
-            onChange={(c) => { setCode(c); reset(); }}
-          />
+          <BankPicker value={bankSel} onChange={(b) => { setBankSel(b); reset(); }} />
           <Field label="Account number" value={number} onChange={(v) => { setNumber(v.replace(/\D/g, '').slice(0, 10)); reset(); }} inputMode="numeric" />
           {!lookup && (
             <button type="button" onClick={find} disabled={busy} className="flex items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-[13px] font-bold text-white disabled:opacity-60">

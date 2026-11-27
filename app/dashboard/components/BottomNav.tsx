@@ -4,19 +4,21 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Home, Package, ShoppingBag, User, MoreHorizontal, Wallet, Settings, LogOut, X, MessageCircle } from 'lucide-react';
+import { Home, Newspaper, Package, ShoppingBag, User, MoreHorizontal, Wallet, Settings, LogOut, X, MessageCircle, BarChart3 } from 'lucide-react';
 import { authService } from '@/lib/api';
 import UnreadBadge from '@/app/components/chat/UnreadBadge';
 import { useUnreadTotal } from '@/lib/chat/hooks';
 
 const PRIMARY = [
   { href: '/dashboard', label: 'Home', icon: Home },
-  { href: '/dashboard/products', label: 'Products', icon: Package },
+  { href: '/dashboard/posts', label: 'Posts', icon: Newspaper },
   { href: '/dashboard/orders', label: 'Orders', icon: ShoppingBag },
   { href: '/dashboard/messages', label: 'Messages', icon: MessageCircle },
 ];
 
 const MORE = [
+  { href: '/dashboard/products', label: 'Products', icon: Package },
+  { href: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/dashboard/profile', label: 'Profile', icon: User },
   { href: '/dashboard/earnings', label: 'Earnings', icon: Wallet },
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },

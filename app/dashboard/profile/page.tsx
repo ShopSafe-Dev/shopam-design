@@ -1,20 +1,13 @@
 'use client';
 
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
-import { AnimatePresence } from 'framer-motion';
-import { Camera, ImagePlus, Loader2, MapPin, Package, Plus, X } from 'lucide-react';
+import { Camera, Loader2, MapPin, Package } from 'lucide-react';
 import Link from 'next/link';
-import { authService, postsService, productsService } from '@/lib/api';
+import { authService, productsService } from '@/lib/api';
 import { useVendorProfile } from '@/lib/vendor/useVendorProfile';
 import BusinessCover from '@/app/components/BusinessCover';
 import type { ProductService } from '@/lib/api';
 import ProductCard from '@/app/explore/components/ProductCard';
-import PostCard from '@/app/components/feed/PostCard';
-import Field from '../components/Field';
-import Modal from '../components/Modal';
-import { FEED_POSTS, toFeedPost, type FeedPost } from '@/app/components/feed/data';
-
-type Tab = 'products' | 'posts';
 
 export default function VendorProfilePage() {
   const { vendor, loading: profileLoading, error: profileError, reload } = useVendorProfile();
@@ -27,9 +20,6 @@ export default function VendorProfilePage() {
     cacVerified: !!vendor?.cacVerified,
   };
   const [products, setProducts] = useState<ProductService[]>([]);
-  const [posts, setPosts] = useState<FeedPost[]>(FEED_POSTS.slice(0, 3));
-  const [tab, setTab] = useState<Tab>('products');
-  const [postOpen, setPostOpen] = useState(false);
   const logoInput = useRef<HTMLInputElement>(null);
   const [logoBusy, setLogoBusy] = useState(false);
   const [logoError, setLogoError] = useState('');
@@ -80,12 +70,12 @@ export default function VendorProfilePage() {
       ) : (
         <div className="overflow-hidden rounded-3xl border border-slate-200/80 bg-white">
           {profileLoading ? (
-            <div className="h-36 animate-pulse bg-slate-100 sm:h-48" />
+            <div className="h-40 animate-pulse bg-slate-100 sm:h-56" />
           ) : (
-            <BusinessCover name={profile.name} className="h-36 sm:h-48" />
+            <BusinessCover name={profile.name} showName={false} className="h-40 sm:h-56" />
           )}
           <div className="relative px-4 pb-4 sm:px-6">
-            <div className="relative -mt-10 h-20 w-20 sm:h-24 sm:w-24">
+            <div className="relative -mt-12 h-24 w-24 sm:-mt-14 sm:h-28 sm:w-28">
               <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-2xl border-4 border-white bg-ink text-2xl font-black text-white shadow-md">
                 {profile.logo ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -127,25 +117,15 @@ export default function VendorProfilePage() {
               </p>
             )}
             {profile.bio && <p className="mt-2 max-w-xl text-sm leading-relaxed text-slate-600">{profile.bio}</p>}
+            <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-slate-100 pt-3 text-sm">
+              <span><span className="font-black text-ink">{products.length}</span> <span className="text-slate-600">products</span></span>
+              <Link href="/dashboard/posts" className="font-semibold text-slate-600 hover:text-[#FA3728]">View your posts</Link>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="flex gap-8 border-b border-slate-200/70">
-        {(['products', 'posts'] as Tab[]).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`border-b-2 pb-2.5 text-sm font-bold capitalize transition-colors ${tab === t ? 'border-[#FA3728] text-ink' : 'border-transparent text-slate-500 hover:text-slate-600'}`}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
-
-      {tab === 'products' && (
-        <div>
+      <section>
           <div className="mb-4 flex items-center justify-end">
             <Link href="/dashboard/products" className="flex items-center gap-1.5 rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#FA3728]">
               <Package size={15} /> Add product
@@ -160,128 +140,7 @@ export default function VendorProfilePage() {
               ))}
             </div>
           )}
-        </div>
-      )}
-
-      {tab === 'posts' && (
-        <div className="mx-auto max-w-xl">
-          <div className="mb-4 flex items-center justify-end">
-            <button onClick={() => setPostOpen(true)} className="flex items-center gap-1.5 rounded-full bg-[#FA3728] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#E31B23]">
-              <Plus size={15} /> New post
-            </button>
-          </div>
-          <div className="space-y-5">
-            {posts.map((post, i) => (
-              <PostCard key={post.id} post={post} index={i} />
-            ))}
-          </div>
-        </div>
-      )}
-
-      <AnimatePresence>
-        {postOpen && (
-          <CreatePostModal
-            onClose={() => setPostOpen(false)}
-            onCreated={(post) => {
-              setPosts((prev) => [post, ...prev]);
-              setPostOpen(false);
-            }}
-            authorName={profile.name}
-          />
-        )}
-      </AnimatePresence>
+      </section>
     </div>
-  );
-}
-
-function CreatePostModal({
-  onClose,
-  onCreated,
-  authorName,
-}: {
-  onClose: () => void;
-  onCreated: (post: FeedPost) => void;
-  authorName: string;
-}) {
-  const [caption, setCaption] = useState('');
-  const [image, setImage] = useState<string | null>(null);
-  const [file, setFile] = useState<File | null>(null);
-  const [busy, setBusy] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
-
-  const submit = async () => {
-    if (!caption.trim()) return;
-    setBusy(true);
-    let created: FeedPost | null = null;
-    try {
-      const saved = await postsService.createPost({ caption: caption.trim(), media: file ? [file] : undefined });
-      // Real post from the API: real UUID, so like/comment/share work on it straight away.
-      const mapped = toFeedPost(saved);
-      created = { ...mapped, vendorName: mapped.vendorName || authorName || 'Your Shop', image: mapped.image || image || '', timeAgo: 'Just now' };
-    } catch {
-      /* dev/offline: show it locally. The demo- id keeps the card from calling the API. */
-    }
-    onCreated(
-      created ?? {
-        id: `demo-local-${Date.now()}`,
-        vendorName: authorName || 'Your Shop',
-        verified: true,
-        timeAgo: 'Just now',
-        image: image ?? '',
-        caption: caption.trim(),
-        likes: 0,
-        comments: 0,
-        tags: [],
-      }
-    );
-    setBusy(false);
-  };
-
-  return (
-    <Modal
-      open
-      title="Create post"
-      description="Share an update with your followers."
-      onClose={onClose}
-      footer={
-        <button onClick={submit} disabled={!caption.trim() || busy} className="flex w-full items-center justify-center gap-2 rounded-full bg-[#FA3728] py-3.5 text-sm font-bold text-white transition-colors hover:bg-[#E31B23] disabled:opacity-50">
-          {busy && <Loader2 size={16} className="animate-spin" />}
-          Publish post
-        </button>
-      }
-    >
-      <div className="space-y-4">
-        <button onClick={() => fileRef.current?.click()} className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-slate-200 text-slate-500 transition-colors hover:border-[#FA3728] hover:text-[#FA3728]">
-          {image ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={image} alt="Post" className="h-full w-full object-cover" />
-          ) : (
-            <span className="flex flex-col items-center gap-1">
-              <ImagePlus size={26} />
-              <span className="text-xs font-medium">Add a photo</span>
-            </span>
-          )}
-          {image && (
-            <span
-              onClick={(e) => { e.stopPropagation(); setImage(null); setFile(null); }}
-              className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white"
-            >
-              <X size={14} />
-            </span>
-          )}
-        </button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) { setFile(f); setImage(URL.createObjectURL(f)); }
-          }}
-        />
-        <Field label="Caption" value={caption} onChange={setCaption} textarea rows={3} />
-      </div>
-    </Modal>
   );
 }

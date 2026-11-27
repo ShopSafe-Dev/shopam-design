@@ -200,8 +200,9 @@ export const authService = {
   },
 
   /** Banks supported for payouts (Monnify list, cached by the server). */
-  async getBanks(): Promise<Bank[]> {
-    return (await apiClient.get<Bank[]>(API_ENDPOINTS.AUTH.BANKS)).data;
+  async getBanks(query = '', limit = 30): Promise<Bank[]> {
+    const params = query.trim() ? { q: query.trim(), limit } : undefined;
+    return (await apiClient.get<Bank[]>(API_ENDPOINTS.AUTH.BANKS, { params })).data;
   },
 
   /** Look up the account name for a number + bank. The server holds the result for 10 minutes. */

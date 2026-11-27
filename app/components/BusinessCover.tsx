@@ -17,7 +17,7 @@ function seed(s: string): number {
   return h >>> 0;
 }
 
-export default function BusinessCover({ name, className = '' }: { name: string; className?: string }) {
+export default function BusinessCover({ name, className = '', showName = true }: { name: string; className?: string; showName?: boolean }) {
   const label = name.trim() || 'Your shop';
   const h = seed(label.toLowerCase());
   const [a, b, c] = PALETTES[h % PALETTES.length];
@@ -41,11 +41,13 @@ export default function BusinessCover({ name, className = '' }: { name: string; 
         className="absolute inset-0 opacity-[0.09]"
         style={{ backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)', backgroundSize: '14px 14px' }}
       />
+      {showName && (
       <p
         className={`relative z-10 max-w-full truncate px-5 pb-3.5 font-bricolage font-black leading-none tracking-tight text-white/95 drop-shadow-sm sm:px-7 sm:pb-5 ${size}`}
       >
         {label}
       </p>
+      )}
     </div>
   );
 }

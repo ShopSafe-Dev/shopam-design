@@ -71,7 +71,7 @@ export default function ChatsListPage() {
       const data = await ordersService.getOrderHistory();
       setOrders(data.results ?? []);
     },
-    { enabled: isAuthenticated && !isLoading, topics: ['order'] }
+    { enabled: !!isAuthenticated && !isLoading, topics: ['order'] }
   );
 
   const activeOrders = orders.filter((o) => o.status !== 'completed' && o.status !== 'cancelled');

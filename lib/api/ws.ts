@@ -1,4 +1,5 @@
 import { accountsApi } from './endpoints/accounts';
+import { WS_URL } from './env';
 
 /**
  * WebSocket client for chat / real-time sync.
@@ -6,11 +7,11 @@ import { accountsApi } from './endpoints/accounts';
  * Auth flow (from GET /api/accounts/ws-ticket in the API spec):
  *   1. Call ws-ticket over the normal HTTP proxy. Backend returns a random,
  *      single-use ticket valid for 30 seconds.
- *   2. Open the socket with `?session_id=<ticket>`.
+ *   2. Open the socket with `?ticket=<ticket>` (the server deletes it on first use; `session_id` would not).
  *   Because tickets are single-use, EVERY (re)connect fetches a fresh one.
  *
  * The WS route itself is NOT in the OpenAPI spec, so it comes from the env:
- *   NEXT_PUBLIC_WS_URL=wss://api.shopsafeng.com/<ws-path>   (no query string)
+ *   NEXT_PUBLIC_WS_URL=wss://api.shopsafeng.com/<ws-path>   (no query string; see lib/api/env.ts)
  * Sending messages: use REST (postsApi.messagesCreate). The backend pushes the
  * saved message back over this socket ("Integrated with WebSockets").
  */
@@ -55,8 +56,8 @@ export class ReconnectingSocket<T = unknown> {
 
   async connect(): Promise<void> {
     if (typeof window === 'undefined') return;
-    const base = this.opts.url ?? process.env.NEXT_PUBLIC_WS_URL;
-    if (!base) throw new Error('NEXT_PUBLIC_WS_URL is not set');
+    const base = this.opts.url ?? WS_URL;
+    if (!base) throw new Error('NEXT_PUBLIC_WS_URL is not set (see .env.example)');
     if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) return;
 
     this.manualClose = false;
@@ -71,7 +72,7 @@ export class ReconnectingSocket<T = unknown> {
     }
 
     const sep = base.includes('?') ? '&' : '?';
-    const ws = new WebSocket(`${base}${sep}session_id=${encodeURIComponent(ticket)}`);
+    const ws = new WebSocket(`${base}${sep}ticket=${encodeURIComponent(ticket)}`);
     this.ws = ws;
 
     ws.onopen = () => {

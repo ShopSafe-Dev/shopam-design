@@ -26,7 +26,7 @@ export type LiveTopic =
  */
 export function useLiveRefresh(
   refresh: () => unknown | Promise<unknown>,
-  opts: { enabled?: boolean; interval?: number; push?: boolean; topics?: LiveTopic[] } = {}
+  opts: { enabled?: boolean | null; interval?: number; push?: boolean; topics?: LiveTopic[] } = {}
 ) {
   const { enabled = true, interval = 30_000, push = true, topics } = opts;
   const topicKey = topics ? topics.join('|') : '';

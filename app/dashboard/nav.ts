@@ -1,4 +1,4 @@
-import { Home, Package, ShoppingBag, Wallet, User, Settings, MessageCircle } from 'lucide-react';
+import { Home, Newspaper, Package, ShoppingBag, Wallet, User, Settings, MessageCircle, BarChart3 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export interface NavItem {
@@ -9,9 +9,11 @@ export interface NavItem {
 
 export const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard', label: 'Home', icon: Home },
+  { href: '/dashboard/posts', label: 'Posts', icon: Newspaper },
   { href: '/dashboard/products', label: 'Products', icon: Package },
   { href: '/dashboard/orders', label: 'Orders', icon: ShoppingBag },
   { href: '/dashboard/messages', label: 'Messages', icon: MessageCircle },
+  { href: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/dashboard/earnings', label: 'Earnings', icon: Wallet },
   { href: '/dashboard/profile', label: 'Profile', icon: User },
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },

@@ -158,6 +158,9 @@ export interface ProductService {
   /** Options such as size or colour. When present, buyers must choose one. */
   variants?: ProductVariant[];
   images: ProductImage[];
+  /** Exact stock, only returned to the owning vendor. Products with variants keep stock on each variant. */
+  stock_quantity?: number;
+  in_stock?: boolean;
   created_at: string;
   updated_at: string;
   average_rating: string;
@@ -476,7 +479,12 @@ export interface ProductFilters {
 }
 
 export interface PostFilters {
+  /** VendorProfile id: posts of one storefront. */
   vendor?: string;
+  /** User id: posts of one account. */
+  user?: string;
+  /** true: the signed-in vendor's own posts. */
+  mine?: boolean;
   page?: number;
   page_size?: number;
 }
