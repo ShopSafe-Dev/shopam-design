@@ -11,6 +11,7 @@ import {
   Receipt,
   Settings,
   Store,
+  Scale,
 } from 'lucide-react';
 import { authService } from '@/lib/api';
 import type { UserProfile } from '@/lib/api';
@@ -134,6 +135,7 @@ export default function ProfilePage() {
             <MenuRow icon={Settings} title="Settings" subtitle="Profile, password and notifications" href="/profile/settings" />
             <MenuRow icon={Receipt} title="Payment history" subtitle="Receipts for your orders" href="/profile/payments" />
             <MenuRow icon={Bell} title="Notifications" subtitle="Order and message updates" href="/notifications" />
+            <MenuRow icon={Scale} title="My disputes" subtitle="Problems you reported on orders" href="/disputes" />
           </div>
         </section>
 

@@ -330,6 +330,7 @@ export const postsService = {
         formData.append('media', file);
       });
     }
+    (data.product_ids ?? []).forEach((id) => formData.append('product_ids', id));
 
     const response = await apiClient.post<Post>(
       API_ENDPOINTS.POSTS.CREATE,

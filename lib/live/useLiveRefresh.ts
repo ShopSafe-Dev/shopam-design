@@ -12,7 +12,11 @@ export type LiveTopic =
   | 'profile'
   | 'social'
   | 'notification'
-  | 'staff:verification';
+  | 'dispute'
+  | 'support'
+  | 'staff:verification'
+  | 'staff:dispute'
+  | 'staff:support';
 
 /**
  * Keeps a screen fresh without a manual reload. `refresh` should re-read the data WITHOUT a loading spinner

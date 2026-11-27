@@ -21,10 +21,48 @@ export function notificationParts(n: Notification): { name: string; rest: string
   return { name, rest: verb };
 }
 
-/** Where tapping a notification should go. Order notifications open that order's own chat. */
+const str = (v: unknown) => (typeof v === 'string' && v ? v : null);
+
+/** like | comment | share | follow | order | dispute | support | refund | payout | weekly_digest | other (older API: guessed). */
+export function notificationKind(n: Notification): string {
+  if (n.kind) return n.kind;
+  const d = n.data ?? {};
+  if (str(d.kind)) return d.kind as string;
+  if (str(d.dispute_id)) return 'dispute';
+  if (str(d.ticket_id)) return 'support';
+  if (str(d.order_id)) return 'order';
+  if (/liked your post/.test(n.verb)) return 'like';
+  if (/commented on your post/.test(n.verb)) return 'comment';
+  if (/shared your post/.test(n.verb)) return 'share';
+  if (/following you/.test(n.verb)) return 'follow';
+  return 'other';
+}
+
+/** Where tapping a notification should go, for whoever is looking (vendor dashboard, shopper, staff). */
 export function notificationHref(n: Notification, mode: 'vendor' | 'customer' | 'staff' | null): string | null {
-  const orderId = typeof n.data?.order_id === 'string' ? n.data.order_id : null;
+  const d = n.data ?? {};
+  const kind = notificationKind(n);
+  const disputeId = str(d.dispute_id);
+  const ticketId = str(d.ticket_id);
+  const orderId = str(d.order_id);
+  const postId = n.post_id ?? str(d.post_id);
+
+  if (disputeId) {
+    if (mode === 'staff') return `/staff-panel/disputes/${disputeId}`;
+    // Vendors talk about a dispute only through a support ticket staff open with them.
+    return mode === 'vendor' ? '/dashboard/support' : `/disputes/${disputeId}`;
+  }
+  if (ticketId) {
+    if (mode === 'staff') return `/staff-panel/tickets/${ticketId}`;
+    return mode === 'vendor' ? `/dashboard/support/${ticketId}` : `/support/${ticketId}`;
+  }
   if (orderId) return mode === 'vendor' ? `/dashboard/messages/order/${orderId}` : `/chats/${orderId}`;
-  if (n.target_type === 'socialpost' && n.target_object_id) return `/feed`;
+  if (kind === 'like' || kind === 'comment' || kind === 'share') {
+    // Social notifications go to the post's owner, a vendor: open it in Posts with its numbers.
+    return postId ? `/dashboard/posts?post=${postId}` : '/dashboard/posts';
+  }
+  if (kind === 'follow') return '/dashboard/analytics?tab=overview';
+  if (kind === 'weekly_digest') return '/dashboard/analytics?tab=overview';
+  if (n.target_type === 'socialpost') return '/feed';
   return null;
 }

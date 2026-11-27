@@ -1,6 +1,8 @@
 'use client';
 
-import { notificationParts } from '@/lib/notifications/format';
+import { useRouter } from 'next/navigation';
+import { notificationHref, notificationParts } from '@/lib/notifications/format';
+import NotificationIcon from '@/app/components/NotificationIcon';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell } from 'lucide-react';
 import type { Notification } from '@/lib/api';
@@ -22,12 +24,15 @@ export default function NotificationsPanel({
   items,
   onClose,
   onMarkAllRead,
+  onRead,
 }: {
   open: boolean;
   items: Notification[];
   onClose: () => void;
   onMarkAllRead: () => void;
+  onRead?: (id: number) => void;
 }) {
+  const router = useRouter();
   return (
     <AnimatePresence>
       {open && (
@@ -61,12 +66,21 @@ export default function NotificationsPanel({
                 </div>
               ) : (
                 items.map((item) => (
-                  <div
+                  <button
                     key={item.id}
-                    className={`flex items-start gap-2 border-b border-slate-50 px-4 py-3 last:border-0 ${
+                    onClick={() => {
+                      onRead?.(item.id);
+                      const href = notificationHref(item, 'vendor');
+                      if (href) {
+                        onClose();
+                        router.push(href);
+                      }
+                    }}
+                    className={`flex w-full items-start gap-2.5 border-b border-slate-50 px-4 py-3 text-left last:border-0 hover:bg-slate-50/60 ${
                       item.is_read ? 'border-l-2 border-l-transparent' : 'border-l-2 border-l-[#FA3728]'
                     }`}
                   >
+                    <NotificationIcon item={item} />
                     <div className="min-w-0 flex-1">
                       <p className="text-[13px] leading-snug text-slate-700">
                         {(() => {
@@ -82,7 +96,7 @@ export default function NotificationsPanel({
                       <p className="mt-0.5 text-[11px] text-slate-600">{timeAgo(item.created_at)}</p>
                     </div>
                     {!item.is_read && <span className="shrink-0 text-[10px] font-bold text-[#FA3728]">New</span>}
-                  </div>
+                  </button>
                 ))
               )}
             </div>

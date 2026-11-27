@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
+import AppHeader from '@/app/components/AppHeader';
 
 
 export default function AppBar({
@@ -18,6 +19,12 @@ export default function AppBar({
   const router = useRouter();
 
   return (
+    <>
+    {/* Desktop: the full site header (Products, Feeds, Vendors, cart, chats) so no page is a dead end.
+        Phones get the same sections from the bottom navigation. */}
+    <div className="hidden md:block">
+      <AppHeader />
+    </div>
     <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-white/95 backdrop-blur md:static">
       <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3.5 sm:px-6">
         {showBack && (
@@ -35,5 +42,6 @@ export default function AppBar({
         {action}
       </div>
     </header>
+    </>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -10,6 +10,8 @@ import { feedApi, isAuthError } from '@/lib/feed/api';
 import { useUser } from '@/lib/auth/useUser';
 import { isDemoPost, type FeedPost } from './data';
 import CommentsSheet from './CommentsSheet';
+import PostProducts from './PostProducts';
+import { reportPostView } from '@/lib/analytics/events';
 
 /**
  * Shared post card used by the Feed and the vendor shop "Posts" tab.
@@ -103,10 +105,32 @@ export default function PostCard({ post, index = 0 }: { post: FeedPost; index?: 
     if (!demo && user) feedApi.share(post.id).then(setShares).catch(() => {});
   };
 
-  const vendorHref = `/vendors/${encodeURIComponent(post.vendorName)}`;
+  // The shop page is keyed by VendorProfile id (the name only worked with the old demo data).
+  const vendorHref = post.vendorProfileId ? `/vendors/${encodeURIComponent(post.vendorProfileId)}` : '/vendors';
+
+  // Count a view when at least half the post stays on screen for a second (not for the author).
+  const cardRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el || demo || isOwn || typeof IntersectionObserver === 'undefined') return;
+    let t: ReturnType<typeof setTimeout> | null = null;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) t = setTimeout(() => { reportPostView(post.id); io.disconnect(); }, 1000);
+        else if (t) clearTimeout(t);
+      },
+      { threshold: 0.5 }
+    );
+    io.observe(el);
+    return () => {
+      if (t) clearTimeout(t);
+      io.disconnect();
+    };
+  }, [post.id, demo, isOwn]);
 
   return (
     <motion.article
+      ref={cardRef}
       initial={{ opacity: 0, y: 18 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-60px' }}
@@ -254,6 +278,8 @@ export default function PostCard({ post, index = 0 }: { post: FeedPost; index?: 
             ))}
           </div>
         )}
+
+        <PostProducts products={post.products ?? []} canAdd={!!user && !isOwn} />
 
         <div className="mt-3 border-t border-slate-100 pt-3">
           <Link

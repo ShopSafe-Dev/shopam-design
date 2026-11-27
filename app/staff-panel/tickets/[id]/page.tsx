@@ -5,15 +5,18 @@ import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { staffApi } from '@/lib/api/endpoints/staff';
+import { supportApi } from '@/lib/api/endpoints/support';
+import AskPrivately from '../../AskPrivately';
+import { useLiveRefresh } from '@/lib/live/useLiveRefresh';
 import type * as S from '@/lib/api/openapi-types';
-import { asList, Badge, Card, ErrorBox, PRIORITY_TONE, STATUS_TONE, Spinner, btn, errMsg, fmtDate, inputCls } from '../../ui';
+import { Badge, Card, ErrorBox, PRIORITY_TONE, STATUS_TONE, Spinner, btn, errMsg, fmtDate, inputCls } from '../../ui';
 
 const STATUSES: S.AdminTicketUpdateRequestStatusEnum[] = ['open', 'pending', 'resolved', 'rejected', 'closed'];
 const MAX_FILES = 3;
 
 export default function StaffTicketPage() {
   const { id } = useParams<{ id: string }>();
-  const [ticket, setTicket] = useState<S.SupportTicketList | null>(null);
+  const [ticket, setTicket] = useState<(S.SupportTicketDetail & { user_email?: string }) | null>(null);
   const [messages, setMessages] = useState<S.TicketMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -33,14 +36,11 @@ export default function StaffTicketPage() {
   const load = useCallback(async () => {
     setError('');
     try {
-      // There is no staff "get one ticket" endpoint: read the header from the list.
-      const [rawList, rawMsgs] = await Promise.all([staffApi.ticketsList(), staffApi.ticketsMessagesList(id)]);
-      const list = asList<S.SupportTicketList>(rawList);
-      const msgs = asList<S.TicketMessage>(rawMsgs);
-      const t = list.find((x) => x.id === id) ?? null;
+      // The ticket endpoint serves staff too (with internal notes) and carries the whole thread.
+      const t = await supportApi.ticketsRetrieve(id);
       setTicket(t);
-      if (t?.status) setStatus(t.status);
-      setMessages(msgs);
+      if (t?.status) setStatus((cur) => cur || t.status || '');
+      setMessages(t.messages ?? []);
     } catch (err) {
       setError(errMsg(err, 'Could not load this ticket.'));
     } finally {
@@ -51,6 +51,7 @@ export default function StaffTicketPage() {
   useEffect(() => {
     void load();
   }, [load]);
+  useLiveRefresh(load, { enabled: !loading && !sending, topics: ['staff:support'] });
 
   const saveUpdate = async () => {
     setUpdating(true);
@@ -84,7 +85,7 @@ export default function StaffTicketPage() {
       setInternal(false);
       setFiles([]);
       if (fileRef.current) fileRef.current.value = '';
-      setMessages(asList<S.TicketMessage>(await staffApi.ticketsMessagesList(id)));
+      await load();
     } catch (err) {
       setSendError(errMsg(err, 'Could not send the reply.'));
     } finally {
@@ -116,6 +117,17 @@ export default function StaffTicketPage() {
         <Card className="mb-4 p-4">
           <p className="font-mono text-xs text-slate-500">{ticket.reference}</p>
           <h1 className="mt-0.5 text-lg font-bold text-ink">{ticket.subject}</h1>
+          {ticket.user_email && (
+            <p className="text-xs text-slate-600">
+              From {ticket.user_email} ·{' '}
+              <Link href={`/staff-panel/moderation?account=${encodeURIComponent(ticket.user_email)}`} className="font-semibold text-ink underline">
+                Their orders and account actions
+              </Link>
+            </p>
+          )}
+          <div className="mt-3">
+            <AskPrivately relatedTicket={ticket.id} defaultSubject={`About your request ${ticket.reference}`} label="Ask the other party privately" />
+          </div>
           <div className="mt-2 flex flex-wrap gap-1.5">
             <Badge>{ticket.category}</Badge>
             {ticket.priority && <Badge tone={PRIORITY_TONE[ticket.priority]}>{ticket.priority}</Badge>}

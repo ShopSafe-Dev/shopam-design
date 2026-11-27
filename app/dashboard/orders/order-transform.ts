@@ -165,7 +165,7 @@ export function transformOrder(order: APIOrder): UIOrder {
 
   // 9. Disputed
   if (order.status === 'disputed') {
-    messages.push({ id: `disputed-${order.id}`, type: 'disputed', timestamp: time, reason: extra.dispute_reason || 'Buyer raised a dispute' });
+    messages.push({ id: `disputed-${order.id}`, type: 'disputed', timestamp: time, reason: 'On hold while ShopSafeNG reviews this order. We will contact you in Help & support if we need anything.' });
   }
 
   const firstItem = order.items[0];

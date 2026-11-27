@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Check, X, Truck, CheckCircle2, ShoppingBag, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Check, X, Truck, CheckCircle2, ShoppingBag } from 'lucide-react';
 import { money, SUGGESTED_SHIPPING_FEE } from '@/lib/order-steps';
 import type { UIOrder, ConversationMessage } from './order-transform';
 
@@ -17,10 +17,10 @@ interface OrderConversationProps {
   onModify: (orderId: string) => void;
   onReject: (orderId: string) => void;
   onSetShippingFee: (orderId: string, fee: number) => void;
-  onResolveDispute: (orderId: string, resolution: string) => void;
+  /** @deprecated Vendors no longer resolve disputes; ShopSafeNG staff decide. Kept so callers still compile. */
+  onResolveDispute?: (orderId: string, resolution: string) => void;
 }
 
-const RESOLUTIONS = ['Refund', 'Replace item', 'Reorder', 'Partial refund'];
 
 function EventChip({ tone, label }: { tone: 'emerald' | 'blue' | 'gray' | 'amber'; label: string }) {
   const styles = {
@@ -75,7 +75,6 @@ export default function OrderConversation({
   onModify,
   onReject,
   onSetShippingFee,
-  onResolveDispute,
 }: OrderConversationProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [fee, setFee] = useState(SUGGESTED_SHIPPING_FEE);
@@ -196,7 +195,7 @@ export default function OrderConversation({
               return (
                 <div key={msg.id} className="flex justify-center">
                   <div className="w-full max-w-md rounded-2xl border border-amber-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-                    <div className="mb-1 flex items-center gap-2 text-[13px] font-bold text-ink"><X size={14} className="text-amber-500" /> Dispute raised</div>
+                    <div className="mb-1 flex items-center gap-2 text-[13px] font-bold text-ink"><X size={14} className="text-amber-500" /> On hold for review</div>
                     <p className="text-xs text-slate-600">{msg.reason}</p>
                   </div>
                 </div>
@@ -284,17 +283,10 @@ export default function OrderConversation({
           )}
 
           {status === 'disputed' && (
-            <div>
-              <p className="mb-2 text-center text-xs font-semibold text-amber-700">Choose how to resolve this dispute</p>
-              <div className="grid grid-cols-2 gap-2">
-                {RESOLUTIONS.map((r) => (
-                  <button key={r} onClick={() => onResolveDispute(order.id, r)} className="flex items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white py-2.5 text-[13px] font-semibold text-ink transition-colors hover:border-ink">
-                    {r === 'Reorder' ? <RotateCcw size={13} /> : <CheckCircle2 size={13} />}
-                    {r}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <p className="rounded-2xl bg-amber-50 px-4 py-3 text-center text-[13px] text-amber-900">
+              This order is on hold while ShopSafeNG reviews it. If we need anything from you, we will contact you in{' '}
+              <Link href="/dashboard/support" className="font-semibold underline">Help &amp; support</Link>.
+            </p>
           )}
 
           {status === 'cancelled' && (

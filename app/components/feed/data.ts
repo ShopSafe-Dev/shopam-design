@@ -1,5 +1,16 @@
 import { timeAgo } from '@/lib/format';
 
+/** A product tagged on a post. */
+export interface PostProduct {
+  id: string;
+  title: string;
+  price: string;
+  image: string | null;
+  inStock: boolean;
+  /** Variants or add-ons: the buyer has to choose, so the card opens the product page. */
+  hasOptions: boolean;
+}
+
 /** Normalized post view-model shared by the Feed and vendor shop pages. */
 export interface FeedPost {
   /** Post UUID. Curated fallback posts use ids starting with "demo-" and never call the API. */
@@ -26,6 +37,8 @@ export interface FeedPost {
   vendorProfileId?: string | null;
   isFollowing?: boolean;
   myFollowId?: string | null;
+  /** Products the vendor tagged on this post. */
+  products?: PostProduct[];
 }
 
 export const isDemoPost = (p: { id: string }) => p.id.startsWith('demo-');
@@ -63,5 +76,15 @@ export function toFeedPost(raw: any): FeedPost {
     vendorProfileId: raw?.vendor_profile_id ?? null,
     isFollowing: Boolean(raw?.is_following_vendor),
     myFollowId: raw?.my_follow_id ?? null,
+    products: Array.isArray(raw?.products)
+      ? raw.products.map((p: any) => ({
+          id: String(p.id),
+          title: String(p.title ?? ''),
+          price: String(p.price ?? '0'),
+          image: typeof p.image === 'string' ? p.image : null,
+          inStock: p.in_stock !== false,
+          hasOptions: !!p.has_options,
+        }))
+      : [],
   };
 }

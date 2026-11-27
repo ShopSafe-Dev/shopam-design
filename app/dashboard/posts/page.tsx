@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Heart, Loader2, MessageCircle, Share2 } from 'lucide-react';
 import { compactNumber } from '@/lib/format';
@@ -33,6 +33,15 @@ export default function PostsPage() {
   const { vendor } = useVendorProfile();
   const mine = useMyPosts(20);
   const [sort, setSort] = useState<Sort>('newest');
+  // From a notification (/dashboard/posts?post=<id>): scroll to that post and highlight it.
+  const [focus, setFocus] = useState<string | null>(null);
+  useEffect(() => {
+    setFocus(new URLSearchParams(window.location.search).get('post'));
+  }, []);
+  useEffect(() => {
+    if (!focus || mine.loading) return;
+    document.getElementById(`post-${focus}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, [focus, mine.loading]);
 
   const totals = useMemo(
     () => mine.posts.reduce((t, p) => ({ likes: t.likes + p.likes, comments: t.comments + p.comments, shares: t.shares + (p.shares ?? 0) }), { likes: 0, comments: 0, shares: 0 }),
@@ -58,8 +67,8 @@ export default function PostsPage() {
           <h2 className="text-2xl font-black tracking-tight text-ink">Posts</h2>
           <p className="mt-0.5 text-sm text-slate-600">Write a post and see how each one is doing.</p>
         </div>
-        <Link href="/dashboard/analytics?tab=social" className="flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-[#FA3728]">
-          Social analytics <ArrowRight size={14} />
+        <Link href="/dashboard/analytics?tab=posts" className="flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-[#FA3728]">
+          Post analytics <ArrowRight size={14} />
         </Link>
       </div>
 
@@ -93,7 +102,7 @@ export default function PostsPage() {
         ) : (
           <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
             {sorted.map((p) => (
-              <div key={p.id} className="flex items-center gap-3 border-b border-slate-50 px-3 py-3 last:border-0 sm:gap-4 sm:px-4">
+              <div key={p.id} id={`post-${p.id}`} className={`flex items-center gap-3 border-b border-slate-50 px-3 py-3 last:border-0 sm:gap-4 sm:px-4 ${focus === p.id ? 'bg-amber-50' : ''}`}>
                 <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-slate-100 sm:h-20 sm:w-20">
                   {p.image && (
                     // eslint-disable-next-line @next/next/no-img-element

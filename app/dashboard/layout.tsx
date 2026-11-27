@@ -13,6 +13,8 @@ import { pageTitle } from './nav';
 import Sidebar from './components/Sidebar';
 import BottomNav from './components/BottomNav';
 import NotificationsPanel from './components/NotificationsPanel';
+import { useNotificationPush } from '@/lib/notifications/useLive';
+import { useVendorProfile } from '@/lib/vendor/useVendorProfile';
 import { getMode, homeFor } from '@/lib/auth/mode';
 import ModeSwitch from '@/app/components/ModeSwitch';
 import ShopSafeLogo from '@/app/components/ui/ShopSafeLogo';
@@ -57,12 +59,23 @@ export default function VendorDashboardLayout({ children }: { children: React.Re
     if (!authChecked) return;
     notificationsService.list().then(setNotifications).catch(() => {});
   }, [authChecked]);
+  // New likes, comments, shares, orders... appear in the bell without a reload.
+  useNotificationPush(authChecked, () => {
+    notificationsService.list().then(setNotifications).catch(() => {});
+  });
+
+  const { vendor: shop } = useVendorProfile();
 
   if (!authChecked) return null;
 
   const user = authService.getCurrentUser();
   const initial = (user?.first_name || user?.username || 'V').charAt(0).toUpperCase();
   const unread = notifications.filter((n) => !n.is_read).length;
+
+  const markRead = (id: number) => {
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
+    notificationsService.markRead(id).catch(() => {});
+  };
 
   const markAllRead = () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
@@ -95,7 +108,7 @@ export default function VendorDashboardLayout({ children }: { children: React.Re
                 </span>
               )}
             </button>
-            <NotificationsPanel open={notifOpen} items={notifications} onClose={() => setNotifOpen(false)} onMarkAllRead={markAllRead} />
+            <NotificationsPanel open={notifOpen} items={notifications} onClose={() => setNotifOpen(false)} onMarkAllRead={markAllRead} onRead={markRead} />
             <Link
               href="/dashboard/profile"
               className="flex h-9 w-9 items-center justify-center rounded-full bg-ink text-xs font-bold text-white"
@@ -111,7 +124,19 @@ export default function VendorDashboardLayout({ children }: { children: React.Re
 
       {/* Content */}
       <main className="md:pl-60">
-        <div className="mx-auto max-w-5xl px-5 pb-24 pt-6 md:px-8 md:pb-12 md:pt-9">{children}</div>
+        <div className="mx-auto max-w-5xl px-5 pb-24 pt-6 md:px-8 md:pb-12 md:pt-9">
+          {shop?.suspended && (
+            <div role="alert" className="mb-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              <p className="font-bold">Your shop is suspended.</p>
+              <p className="mt-0.5">
+                Your products and posts are hidden, you cannot take new orders and payouts are on hold.
+                {shop.suspendedReason ? ` Reason: ${shop.suspendedReason}` : ''}{' '}
+                <Link href="/dashboard/support" className="font-semibold underline">Contact support</Link>
+              </p>
+            </div>
+          )}
+          {children}
+        </div>
       </main>
 
       {/* Mobile bottom nav */}

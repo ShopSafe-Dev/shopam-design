@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Home, Newspaper, Package, ShoppingBag, User, MoreHorizontal, Wallet, Settings, LogOut, X, MessageCircle, BarChart3 } from 'lucide-react';
+import { Home, Newspaper, Package, ShoppingBag, User, MoreHorizontal, Wallet, Settings, LogOut, X, MessageCircle, BarChart3, LifeBuoy } from 'lucide-react';
 import { authService } from '@/lib/api';
 import UnreadBadge from '@/app/components/chat/UnreadBadge';
 import { useUnreadTotal } from '@/lib/chat/hooks';
@@ -23,6 +23,7 @@ const MORE = [
   { href: '/dashboard/profile', label: 'Profile', icon: User },
   { href: '/dashboard/earnings', label: 'Earnings', icon: Wallet },
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },
+  { href: '/dashboard/support', label: 'Help & support', icon: LifeBuoy },
 ];
 
 export default function BottomNav() {

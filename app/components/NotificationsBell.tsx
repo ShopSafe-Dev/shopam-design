@@ -1,5 +1,6 @@
 'use client';
 
+import NotificationIcon from '@/app/components/NotificationIcon';
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -131,6 +132,7 @@ export default function NotificationsBell() {
                     className={`flex w-full items-start gap-2 border-b border-slate-50 px-4 py-3 text-left last:border-0 hover:bg-slate-50/60 ${item.is_read ? 'border-l-2 border-l-transparent' : 'border-l-2 border-l-[#FA3728]'
                       }`}
                   >
+                    <NotificationIcon item={item} />
                     <div className="min-w-0 flex-1">
                       <p className="text-[13px] leading-snug text-slate-700">
                         {(() => {

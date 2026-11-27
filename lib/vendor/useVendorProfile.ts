@@ -21,6 +21,9 @@ export interface VendorView {
   /** Server-reported state per section; undefined = never submitted. */
   verification: Partial<Record<'cac' | 'tin' | 'address' | 'bank', VerificationInfo>>;
   bank: BankDetails | null;
+  /** Staff suspended the shop: hidden, no new orders, payouts held. */
+  suspended: boolean;
+  suspendedReason: string;
 }
 
 /** Everything the vendor UI shows comes from GET /api/accounts/profile -> vendor_profile (+ the user's phone). */
@@ -40,6 +43,8 @@ function toView(user: UserProfile, vp: VendorProfile | undefined): VendorView {
     addressVerified: !!vp?.address_verified,
     verification: vp?.verification_status ?? {},
     bank: vp?.bank_details ?? null,
+    suspended: !!(vp as { is_suspended?: boolean } | undefined)?.is_suspended,
+    suspendedReason: (vp as { suspended_reason?: string } | undefined)?.suspended_reason ?? '',
   };
 }
 

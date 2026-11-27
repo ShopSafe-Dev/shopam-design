@@ -2,13 +2,16 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Compass, ShoppingCart, MessageCircle, User } from 'lucide-react';
+import { Newspaper, Compass, Store, ShoppingCart, MessageCircle, User } from 'lucide-react';
 import UnreadBadge from './chat/UnreadBadge';
 import { useUnreadTotal } from '@/lib/chat/hooks';
 
+// Same sections as the desktop header (Products, Feeds, Vendors), so every screen has a way back to them.
+// "Home" used to point at the signed-out landing page.
 const TABS = [
-  { href: '/', label: 'Home', icon: Home },
-  { href: '/explore', label: 'Explore', icon: Compass },
+  { href: '/feed', label: 'Feed', icon: Newspaper },
+  { href: '/explore', label: 'Products', icon: Compass },
+  { href: '/vendors', label: 'Vendors', icon: Store },
   { href: '/cart', label: 'Cart', icon: ShoppingCart },
   { href: '/chats', label: 'Chats', icon: MessageCircle },
   { href: '/profile', label: 'Profile', icon: User },
@@ -28,7 +31,7 @@ export default function BottomNav() {
           const active = isActive(tab.href);
           const Icon = tab.icon;
           return (
-            <Link key={tab.href} href={tab.href} className="flex w-16 flex-col items-center gap-0.5 py-2">
+            <Link key={tab.href} href={tab.href} className="flex min-w-0 flex-1 flex-col items-center gap-0.5 py-2">
               <span className="relative">
                 <Icon
                   size={21}

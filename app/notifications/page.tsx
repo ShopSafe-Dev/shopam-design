@@ -1,5 +1,6 @@
 'use client';
 
+import NotificationIcon from '@/app/components/NotificationIcon';
 import { useRouter } from 'next/navigation';
 import { notificationHref, notificationParts } from '@/lib/notifications/format';
 import { useMode } from '@/lib/auth/useMode';
@@ -38,6 +39,7 @@ function Row({ item, onRead }: { item: Notification; onRead: (id: number) => voi
         item.is_read ? 'border-l-2 border-l-transparent' : 'border-l-2 border-l-[#FA3728]'
       }`}
     >
+      <NotificationIcon item={item} />
       <div className="min-w-0 flex-1">
         <p className="text-sm leading-snug text-slate-700">
           {(() => {

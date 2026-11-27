@@ -403,6 +403,8 @@ export interface Post {
 export interface CreatePostRequest {
   caption: string;
   media?: File[];
+  /** Your own products to tag on the post (at most 5). */
+  product_ids?: string[];
 }
 
 // Social - Like Types
@@ -588,6 +590,10 @@ export interface Notification {
   message?: string;
   count?: number;
   data?: Record<string, unknown> | null;
+  /** What it is about: like | comment | share | follow | order | dispute | support | refund | payout | weekly_digest | other. */
+  kind?: string;
+  /** The post a like / comment / share is about. */
+  post_id?: string | null;
   verb: string;
   target_type: string;
   target_object_id: number | null;

@@ -14,6 +14,7 @@ import { buildMessagesUI } from './chat-logic';
 import MessageBubble from './MessageBubble';
 import ReviewModal from './ReviewModal';
 import DisputeModal from './DisputeModal';
+import { disputesService, type DisputeCategory } from '@/lib/api/disputes';
 import { MessageCircle } from 'lucide-react';
 import { useUnreadForOrder } from '@/lib/chat/hooks';
 import UnreadBadge from '@/app/components/chat/UnreadBadge';
@@ -101,17 +102,16 @@ export default function OrderChatPage() {
     }
   };
 
-  const handleSubmitDispute = async (reason: string, email: string, details: string) => {
+  /** Raises the dispute and opens it. Throws a readable message for the modal on failure. */
+  const handleSubmitDispute = async (category: DisputeCategory, details: string, files: File[]) => {
     try {
-      await ordersService.raiseDispute(orderId, {
-        email,
-        reason: details ? `${reason} — ${details}` : reason,
-      });
-      await refreshOrder();
-    } catch (e) {
-      await failWith(e, 'Could not submit the dispute. Please try again.');
-    } finally {
+      const { dispute_id } = await disputesService.raise(orderId, { category, reason: details, files });
       setDisputeOpen(false);
+      router.push(`/disputes/${dispute_id}`);
+    } catch (e) {
+      const data = (e as { response?: { data?: Record<string, unknown> } }).response?.data;
+      const first = data && (typeof data.error === 'string' ? data.error : (Object.values(data).flat()[0] as unknown));
+      throw new Error(typeof first === 'string' ? first : 'Could not submit the dispute. Please try again.');
     }
   };
 
@@ -206,6 +206,16 @@ export default function OrderChatPage() {
             </div>
           )}
 
+          {order?.status === 'disputed' && (
+            <Link
+              href={`/disputes?order=${orderId}`}
+              className="mx-auto flex w-full max-w-md items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] font-semibold text-amber-900"
+            >
+              You raised a dispute on this order. Follow it and talk to our team.
+              <span className="shrink-0 underline">Open</span>
+            </Link>
+          )}
+
           {messages.map((message, i) => (
             <MessageBubble
               key={`${message.id}-${i}`}
@@ -245,7 +255,6 @@ export default function OrderChatPage() {
         />
         <DisputeModal
           open={disputeOpen}
-          defaultEmail={authService.getCurrentUser()?.email}
           onClose={() => setDisputeOpen(false)}
           onSubmit={handleSubmitDispute}
         />

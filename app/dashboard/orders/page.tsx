@@ -63,7 +63,6 @@ export default function OrdersPage() {
   const handleSetShippingFee = (id: string, fee: number) => run(() => ordersService.setShippingFee(id, fee.toFixed(2)), id, 'Failed to set the delivery fee.');
   const handleConfirmHandover = (id: string, code: string) => run(() => ordersService.confirmHandover(id, { code }), id, 'Wrong code or the order is not ready for handover.');
   const handleStartDelivery = (id: string) => run(() => ordersService.startDelivery(id), id, 'Failed to mark as shipped.');
-  const handleResolveDispute = (id: string, resolution: string) => run(() => ordersService.resolveDispute(id, resolution), id, 'Failed to resolve the dispute.');
 
   const openModify = (id: string) => setModifyTarget(orders.find((o) => o.id === id) ?? selectedOrder);
   const openReject = (id: string) => setRejectTarget(orders.find((o) => o.id === id) ?? selectedOrder);
@@ -105,7 +104,6 @@ export default function OrdersPage() {
           onModify={openModify}
           onReject={openReject}
           onSetShippingFee={handleSetShippingFee}
-          onResolveDispute={handleResolveDispute}
         />
 
         <AnimatePresence>
@@ -196,7 +194,7 @@ export default function OrdersPage() {
                       )}
                       {order.status === 'Confirmed' && (
                         <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-600 md:text-xs">
-                          {order.apiStatus === 'disputed' ? 'Disputed' : 'Confirmed'}
+                          {order.apiStatus === 'disputed' ? 'On hold' : 'Confirmed'}
                         </span>
                       )}
                       {order.status === 'Completed' && (

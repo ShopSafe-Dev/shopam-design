@@ -1,4 +1,4 @@
-import { Home, Newspaper, Package, ShoppingBag, Wallet, User, Settings, MessageCircle, BarChart3 } from 'lucide-react';
+import { Home, Newspaper, Package, ShoppingBag, Wallet, User, Settings, MessageCircle, BarChart3, LifeBuoy } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export interface NavItem {
@@ -17,6 +17,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard/earnings', label: 'Earnings', icon: Wallet },
   { href: '/dashboard/profile', label: 'Profile', icon: User },
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },
+  { href: '/dashboard/support', label: 'Help & support', icon: LifeBuoy },
 ];
 
 /** Home is /dashboard, the parent of every other page, so it only matches exactly. */

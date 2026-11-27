@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import { Bell, FileText, Home, LogOut, MessageCircle, ShieldCheck, User, Wallet } from 'lucide-react';
+import { Bell, FileText, Home, LogOut, MessageCircle, Scale, ShieldCheck, User, UserCog, Wallet } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { authService } from '@/lib/api';
 import { staffApi } from '@/lib/api/endpoints/staff';
@@ -13,6 +13,8 @@ const NAV: { href: string; label: string; icon: LucideIcon }[] = [
   { href: '/staff-panel', label: 'Overview', icon: Home },
   { href: '/staff-panel/verifications', label: 'Verifications', icon: ShieldCheck },
   { href: '/staff-panel/tickets', label: 'Tickets', icon: MessageCircle },
+  { href: '/staff-panel/disputes', label: 'Disputes', icon: Scale },
+  { href: '/staff-panel/moderation', label: 'Orders & accounts', icon: UserCog },
   { href: '/staff-panel/payouts', label: 'Payouts', icon: Wallet },
   { href: '/staff-panel/reviews', label: 'Reviews', icon: FileText },
   { href: '/staff-panel/mailer', label: 'Mailer', icon: Bell },
