@@ -133,7 +133,7 @@ export default function VerificationsPage() {
       {loading ? (
         <Spinner />
       ) : error ? (
-        <ErrorBox message={error} onRetry={load} />
+        <ErrorBox message={error} onRetry={() => load()} />
       ) : items.length === 0 ? (
         <Card><Empty text={view === 'pending' ? 'Nothing pending. All caught up.' : 'No approved verifications.'} /></Card>
       ) : (

@@ -194,7 +194,7 @@ export default function ProductsPage() {
       ) : loadError ? (
         <div className="flex items-center justify-between gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
           {loadError}
-          <button onClick={load} className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-red-600 ring-1 ring-red-200">Retry</button>
+          <button onClick={() => load()} className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-red-600 ring-1 ring-red-200">Retry</button>
         </div>
       ) : products.length === 0 ? (
         <div className="rounded-3xl border border-dashed border-slate-200 bg-white px-6 py-16 text-center">
