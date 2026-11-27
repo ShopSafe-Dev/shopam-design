@@ -89,7 +89,7 @@ function UserSignUpForm() {
   return (
     <AuthShell
       title="Create your account"
-      subtitle="Join ShopAm and start shopping from verified vendors."
+      subtitle="Join ShopSafeNG and start shopping from verified vendors."
       footer={
         <div className="space-y-2">
           <p>
@@ -99,7 +99,7 @@ function UserSignUpForm() {
             </Link>
           </p>
           <p className="text-slate-400">
-            Want to sell on ShopAm?{' '}
+            Want to sell on ShopSafeNG?{' '}
             <Link href="/auth/signup" className="font-medium text-[#FA3728] hover:underline">
               Become a vendor
             </Link>

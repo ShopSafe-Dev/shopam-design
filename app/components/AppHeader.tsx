@@ -121,8 +121,7 @@ export default function AppHeader() {
         </div>
       </div>
 
-      {/* Mobile nav links (second tier) */}
-      {renderTabs('flex md:hidden')}
+      {/* Phones: these sections are in the bottom bar (BottomNav), so no second row here. */}
     </header>
   );
 }

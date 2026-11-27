@@ -51,7 +51,7 @@ export function toFeedPost(raw: any): FeedPost {
     vendor?.business_name ||
     [vendor?.first_name, vendor?.last_name].filter(Boolean).join(' ') ||
     vendor?.username ||
-    'ShopAm Vendor';
+    'ShopSafeNG vendor';
   const media = Array.isArray(raw?.media) ? raw.media : [];
   const first = media[0];
   const image = typeof first === 'string' ? first : first?.image_url || first?.url || '';

@@ -12,6 +12,8 @@ import RejectOrderModal from './RejectOrderModal';
 
 export default function OrdersPage() {
   const [activeTab, setActiveTab] = useState<UIOrderStatus>('All');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState('');
   const [orders, setOrders] = useState<UIOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<UIOrder | null>(null);
@@ -87,7 +89,10 @@ export default function OrdersPage() {
     setRejectTarget(null);
   };
 
-  const filteredOrders = activeTab === 'All' ? orders : orders.filter((o) => o.status === activeTab);
+  const q = query.trim().toLowerCase();
+  const filteredOrders = (activeTab === 'All' ? orders : orders.filter((o) => o.status === activeTab)).filter(
+    (o) => !q || o.name.toLowerCase().includes(q) || o.item.toLowerCase().includes(q) || o.id.toLowerCase().startsWith(q.replace(/^#/, ''))
+  );
 
   /* ── Conversation view ── */
   if (selectedOrder) {
@@ -127,7 +132,7 @@ export default function OrdersPage() {
 
   /* ── List view ── */
   return (
-    <div className="mx-auto max-w-lg space-y-6 px-4 py-2 md:max-w-none md:p-8">
+    <div className="space-y-6">
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-ink md:text-3xl">Orders</h1>
@@ -135,10 +140,25 @@ export default function OrdersPage() {
             {isLoading ? 'Loading…' : `${orders.filter((o) => o.status === 'Pending').length} pending`}
           </p>
         </div>
-        <button className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm">
+        <button
+          onClick={() => { setSearchOpen((v) => !v); if (searchOpen) setQuery(''); }}
+          aria-label={searchOpen ? 'Close search' : 'Search orders'}
+          aria-expanded={searchOpen}
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm"
+        >
           <Search size={18} strokeWidth={2.5} />
         </button>
       </motion.div>
+
+      {searchOpen && (
+        <input
+          autoFocus
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Customer, item or order number"
+          className="w-full rounded-full border border-slate-200 bg-white px-4 py-2.5 text-base outline-none focus:border-ink sm:text-sm"
+        />
+      )}
 
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
         <div className="flex overflow-x-auto rounded-full border border-slate-200 bg-white p-1">

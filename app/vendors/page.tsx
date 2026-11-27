@@ -141,7 +141,7 @@ export default function VendorsPage() {
             )}
 
             {loading ? (
-              <div className="grid grid-cols-3 gap-2.5 sm:gap-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
                 {Array.from({ length: 6 }).map((_, i) => (
                   <div
                     key={i}
@@ -165,7 +165,7 @@ export default function VendorsPage() {
                 )}
               </div>
             ) : (
-              <div className="grid grid-cols-3 gap-2.5 sm:gap-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
                 {filtered.map((vendor, index) => (
                   <VendorCard key={vendor.id || vendor.name} vendor={vendor} index={index} />
                 ))}

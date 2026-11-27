@@ -261,8 +261,11 @@ select option {
 
 /* Mobile-specific styles */
 @media (max-width: 768px) {
+  /* clip (not hidden): stops sideways scrolling without turning <body> into a scroll container, which broke the
+     sticky headers on phones */
+  html,
   body {
-    overflow-x: hidden;
+    overflow-x: clip;
   }
 
   /* Safe area for notched devices */
@@ -287,12 +290,9 @@ select option {
     margin-bottom: 1rem;
   }
 
-  /* Touch-friendly buttons */
-  button,
-  a {
-    min-height: 44px;
-    min-width: 44px;
-  }
+  /* (Removed: a global `button, a { min-height: 44px; min-width: 44px }` rule. It blew up every small control on
+     phones: icon buttons, chips, tabs, inline links and remove-x buttons all became 44px boxes and pushed layouts
+     apart. Tap targets are sized per component instead.) */
 
   /* Prevent zoom on input focus (iOS) */
   input[type="text"],

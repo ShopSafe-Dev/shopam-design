@@ -87,7 +87,9 @@ export default function OrderConversation({
   const status = order.apiStatus;
 
   return (
-    <div className="flex h-[100dvh] flex-col bg-canvas">
+    // Phones: a full-screen view over the dashboard header and bottom bar (it has its own back button), so the
+    // action buttons at the bottom are never hidden behind the bottom bar. Larger screens: fits inside the page.
+    <div className="fixed inset-0 z-50 flex flex-col bg-canvas md:static md:z-auto md:h-[calc(100dvh-9.25rem)] md:overflow-hidden md:rounded-2xl md:border md:border-slate-200/80">
       {/* Header */}
       <div className="flex flex-shrink-0 items-center gap-3 border-b border-slate-200/70 bg-white px-4 py-3 shadow-sm">
         <button onClick={onBack} className="-ml-1 p-1 text-slate-600">
@@ -209,7 +211,7 @@ export default function OrderConversation({
       </div>
 
       {/* Action area — always the newest thing in the thread */}
-      <div className="flex-shrink-0 border-t border-slate-200/70 bg-white px-3 py-3 sm:px-4">
+      <div className="flex-shrink-0 border-t border-slate-200/70 bg-white px-3 pt-3 pb-[max(env(safe-area-inset-bottom),12px)] sm:px-4">
         <div className="mx-auto max-w-3xl">
           {status === 'pending_vendor_review' && (
             <div className="flex gap-2">

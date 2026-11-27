@@ -103,7 +103,7 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
             <LogOut size={18} />
           </button>
         </div>
-        <nav className="flex gap-1 overflow-x-auto px-3 pb-2">
+        <nav className="no-scrollbar flex gap-1 overflow-x-auto px-3 pb-2">
           {NAV.map(({ href, label }) => (
             <Link
               key={href}

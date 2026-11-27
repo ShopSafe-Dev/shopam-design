@@ -238,7 +238,7 @@ export default function FeedPage() {
         <div className="fixed bottom-16 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 p-3.5 backdrop-blur-xl sm:hidden">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-bold text-ink">Join ShopAm Today</p>
+              <p className="text-sm font-bold text-ink">Join ShopSafeNG Today</p>
               <p className="text-xs text-slate-500">Like, comment, and shop</p>
             </div>
             <Link

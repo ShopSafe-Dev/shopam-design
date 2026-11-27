@@ -146,7 +146,7 @@ export default function ProfilePage() {
             {user.is_vendor ? (
               <MenuRow icon={Store} title="Vendor dashboard" subtitle="Manage your shop" href="/dashboard" />
             ) : (
-              <MenuRow icon={Store} title="Become a vendor" subtitle="Start selling on ShopAm" href="/auth/signup" />
+              <MenuRow icon={Store} title="Become a vendor" subtitle="Start selling on ShopSafeNG" href="/auth/signup" />
             )}
             <MenuRow icon={HelpCircle} title="Help & support" subtitle="Get answers and contact us" href="/support" />
           </div>
@@ -159,7 +159,7 @@ export default function ProfilePage() {
           <LogOut size={17} /> Sign out
         </button>
 
-        <p className="pb-2 text-center text-[11px] text-slate-500">ShopAm · v1.0</p>
+        <p className="pb-2 text-center text-[11px] text-slate-500">ShopSafeNG · v1.0</p>
       </div>
 
       <BottomNav />

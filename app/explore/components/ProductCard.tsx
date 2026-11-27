@@ -32,7 +32,7 @@ export default function ProductCard({
   const reviewCount = parseInt(product.review_count || '0', 10) || 0;
   const price = parseFloat(product.price) || 0;
   const image = product.images?.[0]?.image_url;
-  const shopName = product.owner_name || 'ShopAm Vendor';
+  const shopName = product.owner_name || 'ShopSafeNG vendor';
 
   return (
     <motion.article

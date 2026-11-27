@@ -94,7 +94,7 @@ function UserVerifyForm() {
         subtitle={
           verifiedNeedsSignIn
             ? 'Your email is confirmed. Redirecting you to sign in…'
-            : 'Your account is active. Redirecting you to ShopAm…'
+            : 'Your account is active. Redirecting you to ShopSafeNG…'
         }
       >
         <div className="flex justify-center">

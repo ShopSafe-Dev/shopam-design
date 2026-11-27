@@ -240,7 +240,7 @@ export default function CustomerSettingsPage() {
           </button>
         </section>
 
-        <p className="pb-2 text-center text-[11px] text-slate-500">ShopAm · Account settings</p>
+        <p className="pb-2 text-center text-[11px] text-slate-500">ShopSafeNG · Account settings</p>
       </div>
 
       {/* Update profile */}

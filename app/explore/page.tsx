@@ -146,7 +146,7 @@ export default function ExplorePage() {
 
       <AppHeader />
 
-      <main className="mx-auto max-w-7xl px-4 pb-24 pt-10 sm:px-6 lg:px-8">
+      <main className="mx-auto max-w-7xl px-4 pb-24 pt-6 sm:px-6 sm:pt-10 lg:px-8">
         {/* Compact heading + search */}
         <div className="mb-5 text-center">
           <h1 className="font-bricolage text-2xl font-black tracking-tight text-ink sm:text-3xl">

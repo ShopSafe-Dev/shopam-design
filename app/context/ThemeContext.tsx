@@ -18,10 +18,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // Load theme from localStorage on mount
   useEffect(() => {
     setMounted(true);
-    const savedTheme = (localStorage.getItem('shopsafe-theme') || localStorage.getItem('shopam-theme')) as Theme;
-    if (savedTheme) {
-      setTheme(savedTheme);
-    }
+    // The app is designed in light only. A "dark" value saved by the old app turned some screens dark
+    // (body and theme-* classes) while the rest stayed light, so it is ignored.
+    setTheme('light');
   }, []);
 
   // Update theme in localStorage and document
