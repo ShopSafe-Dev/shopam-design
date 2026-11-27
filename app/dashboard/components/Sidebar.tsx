@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LogOut } from 'lucide-react';
 import { authService } from '@/lib/api';
-import { NAV_ITEMS } from '../nav';
+import { NAV_ITEMS, isNavActive } from '../nav';
 import ModeSwitch from '@/app/components/ModeSwitch';
 import ShopSafeLogo from '@/app/components/ui/ShopSafeLogo';
 import UnreadBadge from '@/app/components/chat/UnreadBadge';
@@ -31,7 +31,7 @@ export default function Sidebar() {
 
       <nav className="flex-1 space-y-1 px-3">
         {NAV_ITEMS.map((item) => {
-          const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const active = isNavActive(pathname, item.href);
           const Icon = item.icon;
           return (
             <Link

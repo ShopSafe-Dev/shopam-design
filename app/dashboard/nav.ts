@@ -19,7 +19,13 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ];
 
+/** Home is /dashboard, the parent of every other page, so it only matches exactly. */
+export function isNavActive(pathname: string, href: string): boolean {
+  if (href === '/dashboard') return pathname === '/dashboard';
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 export function pageTitle(pathname: string): string {
-  const found = NAV_ITEMS.find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
+  const found = NAV_ITEMS.find((item) => isNavActive(pathname, item.href));
   return found ? found.label : 'Vendor Dashboard';
 }

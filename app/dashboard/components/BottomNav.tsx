@@ -8,6 +8,7 @@ import { Home, Newspaper, Package, ShoppingBag, User, MoreHorizontal, Wallet, Se
 import { authService } from '@/lib/api';
 import UnreadBadge from '@/app/components/chat/UnreadBadge';
 import { useUnreadTotal } from '@/lib/chat/hooks';
+import { isNavActive } from '../nav';
 
 const PRIMARY = [
   { href: '/dashboard', label: 'Home', icon: Home },
@@ -35,7 +36,7 @@ export default function BottomNav() {
     });
   };
 
-  const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+  const isActive = (href: string) => isNavActive(pathname, href);
   const moreActive = MORE.some((m) => isActive(m.href));
 
   return (
